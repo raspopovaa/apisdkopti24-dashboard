@@ -1,0 +1,152 @@
+# Project configuration — single source of truth for all skills
+# Created by /nacl-init. Edit values for your project.
+
+project:
+  id: "apisdkopti24-examples"
+  name: "apisdkopti24-examples"
+  stack: "Python 3.11-3.14, uv, hatchling, pytest, ruff, mypy (strict)"
+  description: "Examples using the apisdkopti24 SDK for the OPTI 24 fuel card API: dashboard with metrics and analytics, alerts, exports."
+
+# Infrastructure (VPS/servers)
+# Used by: nacl-tl-deploy (SSH diagnostics on health-check failure), nacl-tl-dev TECH (infra tasks),
+#          nacl-tl-diagnose (server health), nacl-tl-fix (bug reproduction on staging/prod)
+vps:
+  staging:
+    ip: ""              # Staging server IP
+    user: ""            # SSH user
+    ssh_key: "~/.ssh/id_rsa"
+    deploy_user: ""     # User that runs the app (e.g., PM2 user)
+  production:
+    ip: ""
+    user: ""
+    ssh_key: "~/.ssh/id_rsa"
+    deploy_user: ""
+
+# Modules (what gets built, tested, and deployed)
+# Single Python package — no separate frontend/backend split yet.
+modules:
+  fuel_portal:
+    path: "src/fuel_portal"
+    stack: "Python 3.11-3.14"
+    build_cmd: "uv build"
+    test_cmd: "uv run pytest"
+    git_strategy: "direct"
+    git_base_branch: "main"
+
+# Repo-wide review-gate commands (nacl-tl-review Repo-wide Check Gate).
+repo_checks:
+  lint: "uv run ruff check ."
+  typecheck: "uv run mypy"
+  test: "uv run pytest"
+
+# Git strategy (top-level default, modules can override with git_strategy per module)
+git:
+  strategy: "direct"           # no feature/* branches observed in history
+  main_branch: "main"
+  branch_prefix: "feature/"
+  merge_method: "squash"       # "squash", "merge", or "rebase" — used by nacl-tl-release when merging PRs
+
+# Credentials: infrastructure access + test users for QA/debugging
+credentials:
+  # db:
+  #   host: "localhost"
+  #   port: 5432
+  #   user: "app_user"
+  #   password: ""           # from env: DB_PASSWORD
+  #   database: "myapp"
+
+# Task management (YouGile)
+yougile:
+  api_base: "https://yougile.com/api-v2"
+  project_id: ""
+  board_id: ""
+  columns:
+    user_requests: ""
+    backlog: ""
+    in_work: ""
+    dev_done: ""
+    ready_to_test: ""
+    testing: ""
+    to_release: ""
+    reopened: ""
+    done: ""
+  stickers:
+    task_type:
+      id: ""
+      states:
+        task: ""
+        bug: ""
+        feature: ""
+    module:
+      id: ""
+      states: {}
+    source:
+      id: ""
+      states:
+        user: ""
+        agent: ""
+  auto_create_bugs:
+    critical: true
+    major: true
+    minor: false
+
+# Deployment
+deploy:
+  ci_platform: ""              # no .github/workflows/ found
+  staging:
+    method: "github-actions"
+    trigger: "push to feature/* branch"
+    url: ""
+    health_endpoint: "/api/health"
+  production:
+    trigger: "push to main branch"
+    url: ""
+    health_endpoint: "/api/health"
+    ci_timeout: 600
+
+# Test reports (verification, QA)
+reports:
+  mode: "local"
+  local_path: ".tl/reports"
+  ssh_host: ""
+  remote_path: "/srv/reports"
+  domain: ""
+  retention_days: 30
+
+# Documentation publishing (Docmost)
+docmost:
+  api_url: ""
+  spaces:
+    sa:
+      space_id: ""
+      root_page_id: ""
+    ba:
+      space_id: ""
+      root_page_id: ""
+
+# Graph Infrastructure (Neo4j)
+graph:
+  mode: "local"
+  neo4j_bolt_port: 3587
+  neo4j_http_port: 3574
+  neo4j_password: "${NEO4J_PASSWORD}"
+  container_prefix: ""
+  boards_dir: "graph-infra/boards"
+
+# Intake self-diagnosis scoring
+intake:
+  route_threshold: 0.7
+  high_confidence: 0.9
+  scores:
+    leader_confirmed_all_refuted: 0.95
+    leader_confirmed_some_inconclusive: 0.8
+    leader_indirect_all_refuted: 0.75
+    leader_indirect_inconclusive: 0.55
+    contradictory: 0.4
+    all_inconclusive: 0.2
+
+# Validation budgets
+validation:
+  spec_drift_budget:
+    max_count: 25
+    max_age_days: 14

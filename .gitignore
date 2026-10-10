@@ -22,3 +22,12 @@ build/
 # Системные
 .DS_Store
 .idea/
+
+# NaCl workflow artifacts
+.tl/reports/
+.tl/qa-screenshots/
+.tl/goal-runs/
+.tl/exceptions/goal-runs/
+
+# Локальное подключение к графу NaCl: путь к бинарнику и env
+.mcp.json
