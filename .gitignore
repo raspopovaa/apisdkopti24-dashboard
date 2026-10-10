@@ -1,0 +1,24 @@
+# Секреты и локальные данные
+.env
+*.db
+*.duckdb
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Журналы
+*.log
+*.jsonl
+
+# Системные
+.DS_Store
+.idea/
