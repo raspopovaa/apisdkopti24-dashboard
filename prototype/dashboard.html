@@ -1,0 +1,2184 @@
+<title>Пульт топливных карт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: градиентная шапка с KPI на стеклянных карточках → журнал транзакций → сетка аналитики 3×2; на телефоне одна колонка */
+:root {
+  --bg: #f4f8ff;
+  --bg-glow: #e3eeff;
+  --surface: #ffffff;
+  --surface-2: #f3f7fe;
+  --ink: #0b1b3d;
+  --ink-2: #45577d;
+  --ink-3: #7c8bab;
+  --line: #dde7f8;
+  --blue-900: #0f2a6b;
+  --blue-700: #1d4ed8;
+  --blue-600: #2563eb;
+  --blue-500: #3b82f6;
+  --blue-400: #60a5fa;
+  --blue-200: #bfdbfe;
+  --blue-100: #dbeafe;
+  --blue-50: #eff6ff;
+  --sky: #38bdf8;
+  --hero-a: #1e3a8a; --hero-b: #2563eb; --hero-c: #38bdf8;
+  --on-hero: #ffffff;
+  --on-hero-2: rgba(255, 255, 255, 0.78);
+  --glass: rgba(255, 255, 255, 0.14);
+  --glass-line: rgba(255, 255, 255, 0.28);
+  --shadow: 0 1px 2px rgba(15, 42, 107, 0.06), 0 8px 24px rgba(37, 99, 235, 0.08);
+  --shadow-hover: 0 2px 4px rgba(15, 42, 107, 0.08), 0 16px 36px rgba(37, 99, 235, 0.16);
+  --bar-a: #1d4ed8; --bar-b: #60a5fa;
+  --warn: #b86e0a;
+  --crit: #d43f5a;
+  --markup: #d43f5a;
+  --nodisc: #a7b4cc;
+  --good: #0f8a6a;
+  --map-empty: #e2e7ef; --map-border: #ffffff; --fuel-dt: #231F20; --fuel-other: #a7b4cc;
+  --heat-0: #f1f6ff; --heat-1: #dbeafe; --heat-2: #bfdbfe; --heat-3: #93c5fd; --heat-4: #3b82f6; --heat-5: #1d4ed8;
+  --font-display: "Unbounded", "Onest", system-ui, sans-serif;
+  --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 18px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1430; --bg-glow: #12245a; --surface: #0f1d40; --surface-2: #142650; --ink: #e8efff; --ink-2: #aab9db; --ink-3: #7f8fb3; --line: #1f3366;
+    --hero-a: #172f78; --hero-b: #1d4ed8; --hero-c: #0ea5e9;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25); --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 36px rgba(29, 78, 216, 0.3);
+    --bar-a: #3b82f6; --bar-b: #93c5fd; --warn: #f0b04a; --crit: #ff7a90; --good: #3fd0a6;
+    --map-empty: #22305a; --map-border: #0f1d40; --fuel-dt: #c9d1e0; --fuel-other: #5d6b8a; --heat-0: #13234a; --heat-1: #173a86; --heat-2: #1d4ed8; --heat-3: #3b82f6; --heat-4: #60a5fa; --heat-5: #bfdbfe;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1430; --bg-glow: #12245a; --surface: #0f1d40; --surface-2: #142650; --ink: #e8efff; --ink-2: #aab9db; --ink-3: #7f8fb3; --line: #1f3366;
+  --hero-a: #172f78; --hero-b: #1d4ed8; --hero-c: #0ea5e9;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25); --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 36px rgba(29, 78, 216, 0.3);
+  --bar-a: #3b82f6; --bar-b: #93c5fd; --warn: #f0b04a; --crit: #ff7a90; --good: #3fd0a6;
+  --map-empty: #22305a; --map-border: #0f1d40; --fuel-dt: #c9d1e0; --fuel-other: #5d6b8a; --heat-0: #13234a; --heat-1: #173a86; --heat-2: #1d4ed8; --heat-3: #3b82f6; --heat-4: #60a5fa; --heat-5: #bfdbfe;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, var(--bg-glow), transparent 60%),
+    radial-gradient(900px 500px at -10% 40%, var(--bg-glow), transparent 55%),
+    var(--bg);
+  color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; min-height: 100%;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 40px; display: grid; gap: 20px; }
+@media (max-width: 520px) { .wrap { padding-inline: 16px; } }
+.mono { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* ---------- шапка ---------- */
+.hero {
+  position: relative; isolation: isolate; z-index: 2;
+  border-radius: 24px; padding: 22px 24px 24px; color: var(--on-hero);
+  background: linear-gradient(120deg, var(--hero-a), var(--hero-b) 48%, var(--hero-c));
+  background-size: 180% 180%;
+  animation: hero-shift 18s ease-in-out infinite alternate;
+  display: grid; gap: 22px;
+  box-shadow: 0 20px 50px -20px rgba(29, 78, 216, 0.55);
+}
+@keyframes hero-shift { from { background-position: 0% 40%; } to { background-position: 100% 60%; } }
+.hero-bg { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
+.blob { position: absolute; border-radius: 50%; filter: blur(40px); opacity: 0.55; z-index: -1; pointer-events: none; }
+.blob.b1 { width: 340px; height: 340px; background: #7dd3fc; top: -140px; right: 8%; animation: drift1 16s ease-in-out infinite alternate; }
+.blob.b2 { width: 280px; height: 280px; background: #818cf8; bottom: -150px; left: 12%; animation: drift2 20s ease-in-out infinite alternate; }
+.blob.b3 { width: 180px; height: 180px; background: #e0f2fe; top: 30%; left: 55%; opacity: 0.25; animation: drift1 24s ease-in-out infinite alternate-reverse; }
+@keyframes drift1 { to { transform: translate(-60px, 40px) scale(1.12); } }
+@keyframes drift2 { to { transform: translate(80px, -30px) scale(0.9); } }
+.hero-bg::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+.hero.shine .hero-bg::after { animation: shine 1.4s var(--ease); }
+@keyframes shine { to { transform: translateX(120%); } }
+
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark { width: 42px; height: 42px; border-radius: 12px; background: var(--glass); border: 1px solid var(--glass-line); display: grid; place-items: center; flex: none; backdrop-filter: blur(8px); }
+.brand-mark svg { width: 22px; height: 22px; }
+.brand h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; margin: 0; letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--on-hero-2); font-size: 0.85rem; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--on-hero-2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-line); white-space: nowrap; backdrop-filter: blur(8px); }
+.pill.env { color: var(--blue-900); background: #ffffff; border-color: transparent; font-weight: 700; letter-spacing: 0.06em; font-size: 0.72rem; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #7ef0c7; }
+.dot.pulse { animation: pulse 1.1s ease-out; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(126, 240, 199, 0.8); } 100% { box-shadow: 0 0 0 10px rgba(126, 240, 199, 0); } }
+.countdown { width: 16px; height: 16px; }
+.countdown circle { fill: none; stroke-width: 3; }
+.countdown .track { stroke: rgba(255, 255, 255, 0.25); }
+.countdown .bar { stroke: #ffffff; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s linear; }
+
+/* выбор договора */
+.contract { position: relative; }
+.contract-btn {
+  font: inherit; color: var(--on-hero); background: var(--glass); border: 1px solid var(--glass-line);
+  border-radius: 10px; padding: 3px 10px 3px 10px; display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer; backdrop-filter: blur(8px); transition: background 0.3s var(--ease); max-width: 100%;
+}
+.contract-btn:hover, .contract-btn[aria-expanded="true"] { background: rgba(255, 255, 255, 0.24); }
+.contract-btn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+.contract-btn .lbl { color: var(--on-hero-2); font-size: 0.82rem; }
+.contract-btn .num { font-family: var(--font-data); font-weight: 500; font-size: 0.92rem; letter-spacing: 0.02em; }
+.contract-btn svg { width: 14px; height: 14px; transition: transform 0.3s var(--ease); flex: none; }
+.contract-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.contract-menu {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: min(360px, calc(100vw - 32px));
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 24px 60px -16px rgba(15, 42, 107, 0.45); padding: 6px; list-style: none; margin: 0;
+  transform-origin: top left; animation: menu-in 0.28s var(--ease);
+}
+@keyframes menu-in { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
+.contract-menu .menu-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); padding: 6px 10px 4px; }
+.contract-option { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; padding: 9px 10px; border-radius: 10px; cursor: pointer; }
+.contract-option:hover, .contract-option.active { background: var(--blue-50); }
+.contract-option[aria-selected="true"] .o-num { color: var(--blue-700); }
+.contract-option .o-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue-500); grid-row: span 2; }
+.contract-option .o-dot.neg { background: var(--crit); }
+.contract-option .o-dot.zero { background: var(--ink-3); }
+.contract-option .o-num { font-family: var(--font-data); font-weight: 500; }
+.contract-option .o-bal { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 0.85rem; text-align: right; }
+.contract-option .o-sub { grid-column: 2 / 4; font-size: 0.78rem; color: var(--ink-3); }
+.contract-option .o-check { width: 16px; height: 16px; color: var(--blue-600); visibility: hidden; }
+.contract-option[aria-selected="true"] .o-check { visibility: visible; }
+.kpi-warn { display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; font-weight: 700; color: #ffffff; background: rgba(212, 63, 90, 0.85); padding: 1px 8px; border-radius: 999px; }
+
+/* скидки */
+.disc-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1000px) { .disc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .disc-kpis { grid-template-columns: 1fr; } }
+.disc-stat { display: grid; gap: 2px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); align-content: start; }
+.disc-stat .v { font-family: var(--font-display); font-weight: 500; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+.disc-stat .l { font-size: 0.8rem; color: var(--ink-2); }
+.disc-stat.save .v { color: var(--blue-700); }
+.disc-stat.final { background: linear-gradient(135deg, var(--blue-50), var(--surface)); border-color: var(--blue-200); }
+.disc-stat.final .v { background: linear-gradient(90deg, var(--blue-700), var(--sky)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.disc-stat .v.neg { color: var(--markup); }
+.disc-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; }
+.disc-filters label { display: grid; gap: 3px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 600; }
+.disc-filters select {
+  font: inherit; font-size: 0.88rem; text-transform: none; letter-spacing: 0; color: var(--ink); min-width: 170px; max-width: 100%;
+  padding: 6px 30px 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+  appearance: none; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
+}
+.disc-filters select:focus-visible { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue-500) 25%, transparent); }
+.disc-filters select.on { border-color: var(--blue-500); background-color: var(--blue-50); }
+.link-btn { font: inherit; font-size: 0.82rem; color: var(--blue-600); background: none; border: 0; padding: 6px 2px; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+.v-pos { color: var(--blue-700); } .v-neg { color: var(--markup); } .v-zero { color: var(--ink-3); }
+
+/* месяц и подсказка за 3 месяца */
+.head-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.month-select {
+  font: inherit; font-size: 0.8rem; color: var(--ink); padding: 3px 26px 3px 9px; border-radius: 8px; border: 1px solid var(--line); background-color: var(--surface);
+  appearance: none; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 13px) 55%, calc(100% - 8px) 55%; background-size: 5px 5px; background-repeat: no-repeat; transition: border-color 0.2s, background-color 0.2s;
+}
+.month-select:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 1px; }
+.month-select.past { border-color: var(--blue-500); background-color: var(--blue-50); }
+.month-select.glass { color: #ffffff; background-color: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.3); text-transform: none; letter-spacing: 0; font-weight: 500;
+  background-image: linear-gradient(45deg, transparent 50%, #ffffff 50%), linear-gradient(135deg, #ffffff 50%, transparent 50%); }
+.month-select.glass option { color: #0b1b3d; }
+.month-select.glass.past { background-color: rgba(255, 255, 255, 0.34); border-color: #ffffff; font-weight: 600; }
+/* баланс: крупная сумма по центру плитки, высота плитки — как у соседних */
+.kpi-balance { grid-template-rows: auto 1fr; }
+.kpi-balance .kpi-value { align-self: center; justify-self: center; text-align: center; font-size: clamp(2.3rem, 4.4vw, 3.2rem); padding-bottom: 10px; }
+.contract { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#month-global { font-size: 0.85rem; padding: 4px 28px 4px 10px; border-radius: 10px; }
+.kpi-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+[data-spark] { cursor: pointer; border-radius: 6px; transition: background-color 0.2s, box-shadow 0.2s; }
+[data-spark]:hover, [data-spark][aria-expanded="true"] { background-color: color-mix(in srgb, var(--blue-500) 10%, transparent); }
+[data-spark]:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
+[data-spark][aria-expanded="true"] { box-shadow: inset 0 -2px 0 var(--blue-500); }
+.hero [data-spark]:hover, .hero [data-spark][aria-expanded="true"] { background-color: rgba(255, 255, 255, 0.14); }
+.hero [data-spark][aria-expanded="true"] { box-shadow: inset 0 -2px 0 #ffffff; }
+.hero [data-spark]:focus-visible { outline-color: #ffffff; }
+.spark-pop { position: fixed; z-index: 50; width: 250px; padding: 10px 12px 8px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 16px 40px -12px rgba(15, 42, 107, 0.45); animation: spark-in 0.18s var(--ease); color: var(--ink); }
+@keyframes spark-in { from { opacity: 0; transform: translateY(4px); } }
+.spark-pop .t { font-size: 0.78rem; font-weight: 600; margin-bottom: 2px; }
+.spark-pop .n { font-size: 0.72rem; color: var(--ink-3); margin-top: 2px; }
+.spark-pop svg { display: block; width: 100%; height: auto; }
+.spark-pop svg rect { transition: height 0.4s var(--ease), y 0.4s var(--ease); }
+.panel.stale .panel-head h2::after { content: " · обновится при показе"; font-family: var(--font-body); font-size: 0.7rem; color: var(--ink-3); font-weight: 400; }
+@media (prefers-reduced-motion: reduce) { .spark-pop { animation: none; } }
+
+/* журнал транзакций */
+tbody tr[tabindex] { cursor: pointer; }
+tbody tr[tabindex]:focus-visible { outline: 2px solid var(--blue-500); outline-offset: -2px; }
+.prod { display: inline-flex; align-items: center; gap: 7px; }
+.prod-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 2.5px var(--line); flex: none; }
+.azs { display: grid; gap: 1px; }
+.azs-name { display: inline-flex; align-items: center; gap: 6px; }
+.azs-addr { font-size: 0.78rem; color: var(--ink-3); white-space: normal; max-width: 26ch; }
+.own-chip { font-size: 0.68rem; font-weight: 600; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--surface-2); white-space: nowrap; }
+.own-chip.gpn { color: var(--blue-700); background: var(--blue-50); border-color: var(--blue-200); }
+.own-chip.partner { color: var(--markup); background: color-mix(in srgb, var(--markup) 9%, transparent); border-color: color-mix(in srgb, var(--markup) 30%, transparent); }
+
+/* карта регионов */
+.geo-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.geo-controls select { font: inherit; font-size: 0.85rem; color: var(--ink); padding: 5px 28px 5px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+  appearance: none; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.geo-grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 1000px) { .geo-grid { grid-template-columns: 1fr; } }
+.chart.geo-map { width: 100%; height: 440px; }
+.geo-map-wrap { position: relative; }
+.geo-zoom { position: absolute; top: 8px; left: 8px; display: grid; gap: 4px; z-index: 2; }
+.geo-zoom button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font: 600 16px/1 var(--font-body); cursor: pointer; box-shadow: 0 2px 8px rgba(15, 42, 107, 0.12); transition: background 0.2s, border-color 0.2s; }
+.geo-zoom button:hover { border-color: var(--blue-500); background: var(--blue-50); }
+.geo-zoom button:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 1px; }
+@media (max-width: 520px) { .chart.geo-map { height: 320px; } }
+.geo-map-hint { font-size: 0.75rem; color: var(--ink-3); margin-top: 4px; }
+.geo-legend { display: grid; gap: 4px; font-size: 0.75rem; color: var(--ink-3); }
+.geo-legend .bar { height: 8px; border-radius: 4px; }
+.geo-legend .ends { display: flex; justify-content: space-between; font-family: var(--font-data); }
+.geo-list { width: 100%; min-width: 0; font-size: 0.84rem; }
+.geo-list td, .geo-list th { padding: 6px 5px; }
+.geo-list td:first-child { white-space: normal; }
+.geo-list tbody tr { cursor: pointer; }
+.geo-list tbody tr.hl { background: var(--blue-50); }
+.geo-sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+
+/* окно транзакции */
+.tx-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: 20px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 30px 80px -20px rgba(15, 42, 107, 0.5); overflow: auto;
+}
+.tx-dialog::backdrop { background: rgba(11, 27, 61, 0.35); backdrop-filter: blur(3px); }
+.tx-dialog[open] { animation: dlg-in 0.32s var(--ease); }
+.tx-dialog[open]::backdrop { animation: fade-in 0.32s var(--ease); }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.txd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; margin: 0;
+  background: linear-gradient(120deg, var(--hero-a), var(--hero-b) 55%, var(--hero-c)); color: #ffffff; }
+.txd-head .subhead { color: rgba(255, 255, 255, 0.78); }
+.txd-head h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.25rem; margin: 2px 0 6px; font-variant-numeric: tabular-nums; }
+.txd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.txd-tags .tag { background: rgba(255, 255, 255, 0.92); }
+.txd-close { width: 32px; height: 32px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.14); color: #ffffff; cursor: pointer; display: grid; place-items: center; flex: none; }
+.txd-close svg { width: 16px; height: 16px; }
+.txd-close:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+.txd-body { padding: 16px 20px; display: grid; gap: 16px; }
+.txd-sec { display: grid; gap: 6px; }
+.txd-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+.txd-row:last-child { border-bottom: 0; }
+.txd-row .k { color: var(--ink-2); }
+.txd-row .v { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+.txd-row.total { font-weight: 600; border-top: 1px solid var(--line); padding-top: 8px; }
+.txd-row.total .v { font-size: 1.05rem; color: var(--blue-700); }
+.txd-foot { padding: 12px 20px 16px; border-top: 1px solid var(--line); font-size: 0.78rem; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .tx-dialog[open], .tx-dialog[open]::backdrop { animation: none; } }
+
+/* загрузка договора */
+.wrap.loading .kpi-value, .wrap.loading .kpi-sub { opacity: 0.35; transition: opacity 0.2s; }
+.kpi-value, .kpi-sub { transition: opacity 0.35s var(--ease); }
+.panel { position: relative; overflow: hidden; }
+.wrap.loading .panel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--blue-100) 70%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%; animation: skeleton 1s linear infinite;
+}
+@keyframes skeleton { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.empty { padding: 28px 8px; text-align: center; color: var(--ink-3); font-size: 0.9rem; }
+
+/* KPI на стекле */
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .kpis { grid-template-columns: 1fr; } }
+.kpi {
+  background: var(--glass); border: 1px solid var(--glass-line); border-radius: var(--radius);
+  padding: 18px 20px; display: grid; gap: 6px; min-width: 0; backdrop-filter: blur(14px);
+  transition: transform 0.4s var(--ease), background 0.4s var(--ease);
+}
+.kpi:hover { transform: translateY(-3px); background: rgba(255, 255, 255, 0.2); }
+.kpi-label { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--on-hero-2); font-weight: 600; }
+.kpi-value { font-family: var(--font-display); font-weight: 500; font-size: clamp(1.6rem, 3.2vw, 2.2rem); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.kpi-value small { font-size: 0.5em; color: var(--on-hero-2); font-weight: 500; margin-left: 2px; }
+.kpi-pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; }
+.kpi-sub { color: var(--on-hero-2); font-size: 0.88rem; }
+.delta { font-weight: 700; color: #ffffff; background: rgba(255, 255, 255, 0.18); padding: 0 6px; border-radius: 6px; }
+.source { margin-top: 6px; padding-top: 10px; border-top: 1px dashed var(--glass-line); font-size: 0.74rem; color: var(--on-hero-2); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hero .chip { background: rgba(255, 255, 255, 0.16); border-color: var(--glass-line); color: #ffffff; }
+.gauge { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.22); overflow: hidden; margin-top: 4px; }
+.gauge span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #bae6fd, #ffffff); border-radius: 3px; transition: width 1.6s var(--ease) 0.5s; }
+
+/* ---------- панели ---------- */
+.chip { font-family: var(--font-data); font-size: 0.72rem; padding: 1px 7px; border-radius: 6px; background: var(--blue-50); border: 1px solid var(--line); color: var(--blue-700); }
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 20px; min-width: 0; display: grid; gap: 12px; align-content: start;
+  box-shadow: var(--shadow); transition: box-shadow 0.4s var(--ease), transform 0.4s var(--ease);
+}
+.panel:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.panel h2 { font-family: var(--font-display); font-weight: 500; font-size: 1rem; margin: 0; text-wrap: balance; }
+.hint { color: var(--ink-3); font-size: 0.8rem; }
+.badge-sample { font-size: 0.72rem; font-weight: 600; color: var(--blue-700); background: linear-gradient(90deg, var(--blue-100), var(--blue-50)); border: 1px solid var(--blue-200); padding: 2px 9px; border-radius: 999px; }
+
+/* таблица */
+.table-scroll { overflow-x: auto; margin-inline: -4px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 720px; }
+th { text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tbody tr { transition: background 0.25s; }
+tbody tr:hover { background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+td.muted { color: var(--ink-2); }
+.card-no { display: inline-flex; align-items: center; gap: 6px; }
+.card-no::before { content: ""; width: 18px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, var(--blue-600), var(--sky)); }
+tr.storno td.num { color: var(--ink-3); text-decoration: line-through; }
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+.tag.crit { color: var(--crit); background: color-mix(in srgb, var(--crit) 11%, transparent); }
+.tag.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+
+/* аналитика */
+.grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+.span-6 { grid-column: span 6; } .span-4 { grid-column: span 4; } .span-2 { grid-column: span 2; }
+@media (max-width: 1000px) { .span-4, .span-2 { grid-column: span 6; } }
+.chart { width: 100%; height: 260px; }
+.chart.tall { height: 280px; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); position: relative; }
+.seg button { font: inherit; font-size: 0.8rem; padding: 4px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-2); cursor: pointer; transition: color 0.3s, background 0.3s, box-shadow 0.3s; }
+.seg button[aria-pressed="true"] { background: linear-gradient(135deg, var(--blue-600), var(--blue-400)); color: #ffffff; font-weight: 600; box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.6); }
+button:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
+.prices { display: grid; gap: 10px; }
+.price-row { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.price-row:last-child { border-bottom: 0; }
+.price-row .p { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-weight: 500; }
+.price-row .d { font-size: 0.78rem; color: var(--blue-700); font-family: var(--font-data); background: var(--blue-50); padding: 0 6px; border-radius: 5px; }
+.saving { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(135deg, var(--blue-50), var(--surface)); border: 1px solid var(--line); }
+.saving b { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; font-variant-numeric: tabular-nums; background: linear-gradient(90deg, var(--blue-700), var(--sky)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.check { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; background: var(--surface-2); }
+.check .n { font-family: var(--font-display); font-weight: 500; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.check .l { font-size: 0.8rem; color: var(--ink-2); }
+.check.crit .n { color: var(--crit); } .check.warn .n { color: var(--warn); } .check.info .n { color: var(--blue-600); }
+.budget { display: grid; gap: 8px; font-size: 0.85rem; }
+.budget-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
+.budget-row .chip { justify-self: start; }
+.quota { display: grid; gap: 5px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.quota-head { display: flex; justify-content: space-between; gap: 8px; font-size: 0.85rem; }
+.quota-bar { height: 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.quota-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--blue-600), var(--sky)); transition: width 1.2s var(--ease); }
+.quota-bar span.over { background: linear-gradient(90deg, #f08497, var(--markup)); }
+button.check { font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s var(--ease); }
+button.check:hover { border-color: var(--blue-500); box-shadow: 0 6px 18px -8px rgba(37, 99, 235, 0.45); transform: translateY(-1px); }
+button.check:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
+.check-cfg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--ink-2); }
+.check-cfg input { width: 3.6em; font: inherit; font-family: var(--font-data); padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-align: right; }
+.check-cfg input:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 1px; }
+.tx-dialog.wide { width: min(860px, calc(100vw - 32px)); }
+.chk-table { width: 100%; min-width: 640px; font-size: 0.84rem; }
+.chk-table td, .chk-table th { padding: 7px 6px; }
+.chk-table tbody tr { cursor: pointer; }
+.chk-table tbody tr:hover { background: var(--surface-2); }
+.chk-group td { background: var(--blue-50); font-weight: 600; color: var(--blue-700); cursor: default; }
+.chk-comment { font-size: 0.76rem; color: var(--ink-3); display: block; white-space: normal; }
+.tz { font-size: 0.72rem; color: var(--ink-3); margin-left: 4px; }
+/* выгрузка отчёта */
+.export { position: relative; }
+.export-btn { font: inherit; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 10px; cursor: pointer;
+  color: #ffffff; border: 0; background: linear-gradient(135deg, var(--blue-600), var(--blue-400)); box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.6); transition: transform 0.2s var(--ease), box-shadow 0.2s; }
+.export-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.7); }
+.export-btn:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
+.export-btn svg { width: 14px; height: 14px; }
+.export-btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+.export-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 250px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 18px 40px -14px rgba(15, 42, 107, 0.45); animation: menu-in 0.22s var(--ease); }
+.export-menu .menu-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); padding: 6px 8px 4px; }
+.export-menu button { display: grid; gap: 1px; width: 100%; text-align: left; font: inherit; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); cursor: pointer; }
+.export-menu button span { font-size: 0.76rem; color: var(--ink-3); }
+.export-menu button:hover, .export-menu button:focus-visible { background: var(--blue-50); outline: none; }
+.export-status { font-size: 0.78rem; color: var(--ink-3); }
+.export-status.ok { color: var(--good); }
+.export-status.err { color: var(--markup); }
+/* группы карт */
+#grp-filter, #grp-fuel { font: inherit; font-size: 0.85rem; color: var(--ink); padding: 5px 28px 5px 10px; border-radius: 10px; border: 1px solid var(--line); background-color: var(--surface);
+  appearance: none; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+#grp-filter.on, #grp-fuel.on { border-color: var(--blue-500); background-color: var(--blue-50); }
+.grp-table { min-width: 680px; font-size: 0.88rem; }
+.grp-table tbody tr { cursor: pointer; }
+.grp-table tbody tr:focus-visible { outline: 2px solid var(--blue-500); outline-offset: -2px; }
+.grp-name { font-weight: 600; }
+.grp-cards { display: block; font-size: 0.76rem; color: var(--ink-3); font-weight: 400; }
+.grp-bar { display: block; height: 4px; border-radius: 2px; margin-top: 5px; background: linear-gradient(90deg, var(--bar-a), var(--bar-b)); transition: width 1s var(--ease); }
+.fuel-mix { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.8rem; color: var(--ink-2); }
+.fuel-mix span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.grp-table tfoot td { font-weight: 600; border-top: 1px solid var(--line); border-bottom: 0; background: var(--surface-2); }
+.azs-head-addr { font-size: 0.85rem; color: rgba(255, 255, 255, 0.85); margin-top: 2px; }
+.txd-head h3 .own-chip { vertical-align: 3px; }
+.azs-table { min-width: 520px; }
+.azs-table tbody tr { cursor: default; }
+.flow { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--ink-3); flex-wrap: wrap; }
+.flow .node { padding: 3px 8px; border-radius: 6px; background: var(--blue-50); color: var(--blue-700); border: 1px solid var(--line); }
+.flow .wire { width: 28px; height: 2px; border-radius: 1px; background: linear-gradient(90deg, var(--blue-200) 0 40%, var(--blue-500) 40% 60%, var(--blue-200) 60%); background-size: 200% 100%; animation: wire 1.6s linear infinite; }
+@keyframes wire { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+footer { color: var(--ink-3); font-size: 0.8rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+footer a { color: var(--blue-600); }
+
+/* ---------- появление при загрузке ---------- */
+.rise { animation: rise 0.8s var(--ease) both; animation-delay: calc(var(--d, 0) * 90ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc(400ms + var(--i) * 45ms); }
+@keyframes row-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero, .blob, .flow .wire { animation: none !important; }
+  .hero.shine .hero-bg::after, .dot.pulse { animation: none; }
+  .wrap.loading .panel::after, .contract-menu { animation: none !important; }
+  .rise, tbody tr.row-in { animation: none; }
+  .kpi, .panel, .gauge span, .countdown .bar { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="hero rise" id="hero" style="--d:0">
+    <div class="hero-bg" aria-hidden="true">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <span class="blob b3"></span>
+    </div>
+    <div class="top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15"/><path d="M3 20h12"/><path d="M6.5 8h5"/><path d="M14 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3"/></svg>
+        </div>
+        <div>
+          <h1>Пульт топливных карт</h1>
+          <div class="contract">
+            <button type="button" class="contract-btn" id="contract-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="contract-menu">
+              <span class="lbl">Договор</span><span class="num" id="contract-num">—</span>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+            </button>
+            <ul class="contract-menu" id="contract-menu" role="listbox" aria-label="Договоры" tabindex="-1" hidden></ul>
+            <select class="month-select glass" id="month-global" aria-label="Месяц для всех блоков дашборда"></select>
+          </div>
+        </div>
+      </div>
+      <div class="status" aria-live="polite">
+        <span class="pill env">DEMO</span>
+        <span class="pill"><span class="dot" id="live-dot"></span>обновлено <span class="mono" id="updated-at">—</span></span>
+        <span class="pill" title="Браузер запрашивает снимок у сервера раз в 10 секунд">
+          <svg class="countdown" viewBox="0 0 16 16" aria-hidden="true"><circle class="track" cx="8" cy="8" r="6"/><circle class="bar" id="cd-bar" cx="8" cy="8" r="6" stroke-dasharray="37.7" stroke-dashoffset="0"/></svg>
+          следующее через <span class="mono" id="next-in">10</span> с
+        </span>
+      </div>
+    </div>
+
+    <section class="kpis" aria-label="Ключевые показатели договора">
+      <article class="kpi kpi-balance rise" style="--d:1">
+        <div class="kpi-label">Баланс договора</div>
+        <div class="kpi-value"><span id="kpi-balance">0</span><small>₽</small></div>
+      </article>
+      <article class="kpi rise" style="--d:2">
+        <div class="kpi-label">Последний платёж</div>
+        <div class="kpi-value" data-spark="payments" tabindex="0" role="button" aria-expanded="false"><span id="kpi-payment">0</span><small>₽</small></div>
+        <div class="kpi-sub">Поступил <span class="mono" id="kpi-payment-date">—</span></div>
+        <div class="source">из <span class="chip">get_contract_data</span> · last_payment_sum</div>
+      </article>
+      <article class="kpi rise" style="--d:3" data-block-el="consumption">
+        <div class="kpi-label kpi-label-row"><span id="kpi-month-label">Израсходовано</span></div>
+        <div class="kpi-pair">
+          <div class="kpi-value" data-spark="rub" tabindex="0" role="button" aria-expanded="false"><span id="kpi-month-rub">0</span><small>₽</small></div>
+          <div class="kpi-value" data-spark="litres" tabindex="0" role="button" aria-expanded="false"><span id="kpi-month-l">0</span><small>л</small></div>
+        </div>
+        <div class="kpi-sub" id="kpi-month-cmp">—</div>
+        <div class="gauge" aria-hidden="true"><span id="kpi-gauge"></span></div>
+        <div class="source" id="kpi-month-src">из <span class="chip">get_contract_data</span> · consumption_for_month, _volume</div>
+      </article>
+    </section>
+  </header>
+
+  <section class="panel rise" style="--d:4" aria-labelledby="disc-title" data-block-el="disc">
+    <div class="panel-head">
+      <h2 id="disc-title">Скидки</h2>
+      <div class="head-tools"><span class="hint" id="disc-scope">топливо</span></div>
+    </div>
+    <div class="disc-kpis">
+      <div class="disc-stat save"><span class="v mono" id="d-save" data-spark="disc.save" tabindex="0" role="button" aria-expanded="false">—</span><span class="l">сумма скидки за месяц</span></div>
+      <div class="disc-stat fee"><span class="v mono" id="d-fee" data-spark="disc.fee" tabindex="0" role="button" aria-expanded="false">—</span><span class="l" id="d-fee-l">сервисный сбор за месяц</span></div>
+      <div class="disc-stat pct"><span class="v mono" id="d-pct" data-spark="disc.pct" tabindex="0" role="button" aria-expanded="false">—</span><span class="l" id="d-pct-l">текущий процент скидки к цене АЗС</span></div>
+      <div class="disc-stat final"><span class="v mono" id="d-final" data-spark="disc.final" tabindex="0" role="button" aria-expanded="false">—</span><span class="l" id="d-final-l">средняя цена литра со скидкой и сбором</span></div>
+    </div>
+    <div class="disc-filters" role="group" aria-label="Фильтры блока скидок">
+      <label for="f-fuel">Вид топлива<select id="f-fuel"></select></label>
+      <label for="f-own">Тип АЗС<select id="f-own"></select></label>
+      <label for="f-region">Регион АЗС<select id="f-region"></select></label>
+      <button type="button" class="link-btn" id="f-reset" hidden>Сбросить фильтры</button>
+    </div>
+    <div class="chart" id="ch-disc" role="img" aria-label="Итоговая цена литра по дням с учётом скидки и сервисного сбора"></div>
+  </section>
+
+  <section class="panel rise" style="--d:4" aria-labelledby="grp-title" data-block-el="groups" hidden>
+    <div class="panel-head">
+      <h2 id="grp-title">Группы карт</h2>
+      <div class="head-tools">
+        <span class="hint" id="grp-scope">все группы · всё топливо</span>
+        <select id="grp-filter" aria-label="Группа карт"></select>
+        <select id="grp-fuel" aria-label="Вид топлива"></select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="grp-table">
+        <thead><tr><th>Группа</th><th class="num">Литры</th><th class="num">Заправок</th><th class="num" title="Сумма по договору со скидкой; со сбором — в подсказке">Стоимость, ₽</th><th>Виды топлива</th><th class="num" title="Минус — скидка, плюс — наценка к цене на стеле">Средняя скидка</th><th class="num">Цена литра</th></tr></thead>
+        <tbody id="grp-body"></tbody>
+        <tfoot id="grp-foot"></tfoot>
+      </table>
+    </div>
+    <p class="hint" id="grp-note" style="margin:0">нажмите на строку группы, чтобы открыть статистику</p>
+  </section>
+
+  <section class="panel rise" style="--d:4" aria-labelledby="tx-title" data-block-el="tx">
+    <div class="panel-head">
+      <h2 id="tx-title">Последние 10 транзакций</h2>
+      <span class="hint">нажмите на строку, чтобы открыть подробности</span>
+      <div class="head-tools">
+        <div class="export">
+          <button type="button" class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="export-menu">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"/></svg>
+            <span id="export-label">Выгрузить отчёт</span>
+          </button>
+          <div class="export-menu" id="export-menu" role="menu" hidden>
+            <div class="menu-title" id="export-title">Транзакционный отчёт</div>
+            <button type="button" role="menuitem" data-format="xlsx"><b>Excel</b><span>.xlsx · числа и даты как значения</span></button>
+            <button type="button" role="menuitem" data-format="csv"><b>CSV</b><span>.csv · UTF-8, разделитель «;»</span></button>
+          </div>
+        </div>
+        <span class="export-status" id="export-status" role="status" aria-live="polite"></span>
+        <span class="badge-sample" id="tx-sample" title="На DEMO нет пригодных транзакций: показан синтетический набор, откалиброванный по расходу договора">пример данных</span></div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th title="Время на АЗС с её часовым поясом">Местное время АЗС</th><th title="Единое время для сравнения транзакций из разных регионов">Время МСК</th><th>Карта</th><th>АЗС, тип и адрес</th><th>Продукт</th><th class="num">Литры</th><th class="num">Цена, ₽</th><th class="num">Сумма, ₽</th><th class="num" title="Минус — скидка, плюс — наценка к цене на стеле АЗС">Скидка, ₽</th><th class="num">Сбор, ₽</th><th>Отметки</th></tr></thead>
+        <tbody id="tx-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid" aria-label="Аналитика">
+    <article class="panel span-6 rise" style="--d:5" aria-labelledby="geo-title" data-block-el="geo">
+      <div class="panel-head">
+        <h2 id="geo-title">География заправок</h2>
+        <div class="geo-controls">
+          <div class="seg" role="group" aria-label="Показатель на карте">
+            <button type="button" data-geo="t" aria-pressed="true">тонны</button>
+            <button type="button" data-geo="price" aria-pressed="false">цена литра</button>
+            <button type="button" data-geo="disc" aria-pressed="false">скидка</button>
+          </div>
+          <select id="geo-fuel" aria-label="Вид топлива на карте"></select>
+        </div>
+      </div>
+      <div class="geo-grid">
+        <div>
+          <div class="geo-map-wrap">
+            <div class="chart geo-map" id="ch-geo" role="img" aria-label="Карта регионов России: реализация, цена литра и скидка по регионам АЗС"></div>
+            <div class="geo-zoom" role="group" aria-label="Масштаб карты">
+              <button type="button" id="geo-zoom-in" aria-label="Приблизить">+</button>
+              <button type="button" id="geo-zoom-out" aria-label="Отдалить">−</button>
+              <button type="button" id="geo-zoom-reset" aria-label="Вся страна" title="Вся страна">⤢</button>
+            </div>
+          </div>
+          <div class="geo-map-hint">точки — АЗС, где заправлялись карты договора; кружок с числом — несколько АЗС рядом, нажмите, чтобы приблизить · колесо или кнопки — масштаб, перетаскивание — сдвиг · границы: Natural Earth</div>
+        </div>
+        <div class="geo-side">
+          <div class="geo-legend" id="geo-legend"></div>
+          <table class="geo-list">
+            <thead><tr><th>Регион АЗС</th><th class="num">Тонн</th><th class="num">₽/л</th><th class="num">Скидка</th></tr></thead>
+            <tbody id="geo-body"></tbody>
+          </table>
+          <p class="hint" id="geo-note" style="margin:6px 0 0">этот месяц · реализация = Σ F_WEIGHT; цена — по договору, со скидкой</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel span-4 rise" style="--d:6" data-block-el="daily">
+      <div class="panel-head">
+        <h2>Расход по дням</h2>
+        <div class="head-tools">
+        <div class="seg" role="group" aria-label="Единица">
+          <button type="button" id="u-rub" aria-pressed="true">₽</button>
+          <button type="button" id="u-l" aria-pressed="false">литры</button>
+        </div></div>
+      </div>
+      <div class="chart" id="ch-daily" role="img" aria-label="Расход по дням выбранного месяца"></div>
+    </article>
+
+    <article class="panel span-2 rise" style="--d:6" data-block-el="products">
+      <div class="panel-head"><h2>Структура по продуктам</h2><div class="head-tools"><span class="hint">доля в ₽</span></div></div>
+      <div class="chart" id="ch-products" role="img" aria-label="Доли продуктов в расходе"></div>
+    </article>
+
+    <article class="panel span-2 rise" style="--d:7" data-block-el="prices">
+      <div class="panel-head"><h2>Цена литра</h2><div class="head-tools"><span class="hint">средняя и разница к стеле</span></div></div>
+      <div class="prices" id="prices"></div>
+    </article>
+
+    <article class="panel span-2 rise" style="--d:8" data-block-el="cards">
+      <div class="panel-head"><h2>Топ-5 карт</h2><div class="head-tools"><span class="hint">₽</span></div></div>
+      <div class="chart" id="ch-cards" role="img" aria-label="Пять карт с наибольшим расходом"></div>
+    </article>
+
+    <article class="panel span-2 rise" style="--d:9" data-block-el="checks">
+      <div class="panel-head"><h2>Контроль</h2></div>
+      <div class="checks" id="checks"></div>
+      <div class="check-cfg" role="group" aria-label="Пороги контроля">
+        <label>больше <input type="number" id="cfg-litres" min="10" max="500" step="5" value="80"> л за раз</label>
+        <label><input type="number" id="cfg-count" min="2" max="10" step="1" value="3"> заправки за <input type="number" id="cfg-hours" min="1" max="24" step="1" value="4"> ч</label>
+      </div>
+      <p class="hint" style="margin:0">нажмите на показатель, чтобы увидеть карты и заправки</p>
+    </article>
+
+    <article class="panel span-4 rise" style="--d:10" data-block-el="heat">
+      <div class="panel-head"><h2>Когда заправляются</h2><div class="head-tools"><span class="hint">заправки, день недели × час, время АЗС</span></div></div>
+      <div class="chart tall" id="ch-heat" role="img" aria-label="Тепловая карта заправок по дням недели и часам"></div>
+    </article>
+
+    <article class="panel span-2 rise" style="--d:11">
+      <div class="panel-head"><h2>Запросы к API</h2><span class="hint">фоновое обновление</span></div>
+      <div class="flow" aria-label="Браузер читает снимок у сервера, сервер опрашивает API">
+        <span class="node">браузер</span><span class="wire"></span><span class="node">сервер</span><span class="wire"></span><span class="node">API DEMO</span>
+      </div>
+      <div class="budget">
+        <div class="budget-row"><span>Запросов в этом месяце</span><span class="mono" id="api-total">—</span></div>
+        <div class="budget-row"><span>из них тарифицируемых</span><span class="mono" id="api-billed">—</span></div>
+        <div class="quota">
+          <div class="quota-head"><span>Бесплатный пакет 500</span><span class="mono" id="api-left">—</span></div>
+          <div class="quota-bar"><span id="api-bar"></span></div>
+        </div>
+        <div class="budget-row"><span>На рабочей среде по расписанию</span><span class="mono" id="api-prod">—</span></div>
+        <div class="hint" id="api-prod-note"></div>
+        <div class="budget-row"><span class="chip">get_contract_data</span><span class="mono">раз в 30 с</span></div>
+        <div class="budget-row"><span class="chip">справочники</span><span class="mono">раз в сутки</span></div>
+        <div class="budget-row"><span>Лимит SDK</span><span class="mono">1 запрос/с</span></div>
+        <div class="budget-row"><span>Блоки на экране</span><span class="mono" id="vis-stat">—</span></div>
+      </div>
+      <p class="hint" style="margin:0">Факт — из бесплатного <span class="chip">get_info</span>; на DEMO статистика не ведётся, поэтому показан расчёт по расписанию. Размер бесплатного пакета зависит от тарифа — проверьте его в портале API.</p>
+    </article>
+  </section>
+
+  <div class="spark-pop" id="spark-pop" role="dialog" aria-label="Показатель за 3 месяца" hidden></div>
+
+  <dialog class="tx-dialog wide" id="azs-dialog" aria-labelledby="azs-title">
+    <form method="dialog" class="txd-head">
+      <div>
+        <div class="subhead" id="azs-kind">АЗС</div>
+        <h3 id="azs-title">—</h3>
+        <div class="azs-head-addr" id="azs-addr"></div>
+      </div>
+      <button class="txd-close" value="close" aria-label="Закрыть">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </form>
+    <div class="txd-body" id="azs-body"></div>
+    <div class="txd-foot" id="azs-foot"></div>
+  </dialog>
+
+  <dialog class="tx-dialog wide" id="grp-dialog" aria-labelledby="grpd-title">
+    <form method="dialog" class="txd-head">
+      <div>
+        <div class="subhead" id="grpd-kind">Группа карт</div>
+        <h3 id="grpd-title">—</h3>
+        <div class="azs-head-addr" id="grpd-sub"></div>
+      </div>
+      <button class="txd-close" value="close" aria-label="Закрыть">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </form>
+    <div class="txd-body" id="grpd-body"></div>
+    <div class="txd-foot" id="grpd-foot"></div>
+  </dialog>
+
+  <dialog class="tx-dialog wide" id="check-dialog" aria-labelledby="chk-title">
+    <form method="dialog" class="txd-head">
+      <div>
+        <div class="subhead" id="chk-kind">Контроль</div>
+        <h3 id="chk-title">—</h3>
+      </div>
+      <button class="txd-close" value="close" aria-label="Закрыть">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </form>
+    <div class="txd-body" id="chk-body"></div>
+    <div class="txd-foot" id="chk-foot"></div>
+  </dialog>
+
+  <dialog class="tx-dialog" id="tx-dialog" aria-labelledby="txd-title">
+    <form method="dialog" class="txd-head">
+      <div>
+        <div class="subhead" id="txd-kind">Транзакция</div>
+        <h3 id="txd-title">—</h3>
+        <div class="txd-tags" id="txd-tags"></div>
+      </div>
+      <button class="txd-close" value="close" aria-label="Закрыть">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </form>
+    <div class="txd-body" id="txd-body"></div>
+    <div class="txd-foot" id="txd-foot"></div>
+  </dialog>
+
+  <footer>
+    <span>Метрики договора — DEMO API ОПТИ 24 через SDK <a href="https://github.com/raspopovaa/apisdkopti24">apisdkopti24</a>. Транзакции и аналитика — синтетический набор.</span>
+    <span>Прототип · <a href="https://github.com/raspopovaa/apisdkopti24-examples">apisdkopti24-examples</a></span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script>
+(() => {
+  // Ответ будущих GET /api/contracts и GET /api/contracts/{key}/blocks/{block}?month=YYYY-MM.
+  // Показатели — ответы DEMO get_contract_data (спайк 2026-10-11); номера договоров условные:
+  // в рабочем дашборде номер приходит из auth_user (contracts[].number), а в URL идёт только ключ key.
+  const CONTRACTS = [
+    { key: "c1", number: "ДМ-000101", balance: 123139.19, available: 123139.19, lastPaymentSum: 50000, lastPaymentDate: "2018-09-28", monthRub: 1202214.25, monthL: 27454.66, prevMonthL: 24804.55 },
+    { key: "c2", number: "ДМ-000102", balance: 50606.29, available: 50606.29, lastPaymentSum: 20000, lastPaymentDate: "2018-09-26", monthRub: 50405.45, monthL: 21444.65, prevMonthL: 15604.55 },
+    { key: "c3", number: "ДМ-000103", balance: -101.6, available: 999898.4, lastPaymentSum: 500, lastPaymentDate: "2025-09-11", monthRub: 101.85, monthL: 10, prevMonthL: 40 },
+    { key: "c4", number: "ДМ-000104", balance: 0, available: 5000000, lastPaymentSum: 50000, lastPaymentDate: "2018-09-28", monthRub: 0, monthL: 0, prevMonthL: 0 },
+  ];
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+
+  const rub = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
+  const rub2 = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const lit = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+  const rate = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
+  const signed = (v) => Math.abs(v) < 0.005 ? "0,00" : `${v > 0 ? "+" : "−"}${rub2.format(Math.abs(v))}`;
+  const monthsGen = ["январе","феврале","марте","апреле","мае","июне","июле","августе","сентябре","октябре","ноябре","декабре"];
+  const monthsNom = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+  const monthsShort = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+
+  // ---------- синтетика транзакций за 3 месяца (имитация базы, заполненной при подключении договора) ----------
+  function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const products = [
+    // Названия, коды и цвета — из справочника Goods (get_dictionary(name="Goods"), бесплатный).
+    { name: "АИ-92", density: 0.735, code: "00000000000004", color: "#fbbc17", price: 65.8, w: 0.34, fuel: true },
+    { name: "АИ-95", density: 0.7413, code: "00000000000003", color: "#e63026", price: 71.5, w: 0.24, fuel: true },
+    { name: "ДТ", density: 0.84, code: "00000000000006", color: "#231F20", price: 80.3, w: 0.34, fuel: true },
+    { name: "СУГ", density: 0.54, code: "00000000000005", color: "#009cde", price: 40.0, w: 0.05, fuel: true },
+    { name: "Товары АЗС", code: null, color: null, price: 1, w: 0.03, fuel: false },
+  ];
+  const stations = [
+    // Как в отчёте за апрель 2024: на собственных АЗС сети скидка, у франчайзи — нет; наценка — у партнёров.
+    // Адреса условные: в рабочем дашборде адрес, тип и регион берутся из отчёта или get_azs_list_v1 по poi_id.
+    { name: "АЗС 412 · Новосибирск", number: "АЗС 412", address: "Новосибирск, ул. Станционная, 60", tz: "+07:00", mode: "disc", own: "Газпромнефть", region: "Новосибирская область" },
+    { name: "АЗС 118 · Новосибирск", number: "АЗС 118", address: "Новосибирск, Бердское шоссе, 14", tz: "+07:00", mode: "disc", own: "Газпромнефть", region: "Новосибирская область" },
+    { name: "АЗС 207 · Бердск", number: "АЗС 207", address: "Бердск, ул. Ленина, 2", tz: "+07:00", mode: "disc", own: "Газпромнефть", region: "Новосибирская область" },
+    { name: "АЗС 33 · Томск", number: "АЗС 33", address: "Томск, Иркутский тракт, 51", tz: "+07:00", mode: "none", own: "Франчайзинг Газпромнефть", region: "Томская область" },
+    { name: "АЗС 590 · Кемерово", number: "АЗС 590", address: "Кемерово, Кузнецкий проспект, 120", tz: "+07:00", mode: "disc", own: "Газпромнефть", region: "Кемеровская область" },
+    { name: "АЗС 71 · Омск", number: "АЗС 71", address: "Омск, ул. 22 Апреля, 4", tz: "+06:00", mode: "markup", own: "Партнёры", region: "Омская область" },
+    { name: "АЗС 305 · Искитим", number: "АЗС 305", address: "Искитим, трасса Р-256, 59 км", tz: "+07:00", mode: "markup", own: "Партнёры", region: "Новосибирская область" },
+    { name: "АЗС 144 · Новосибирск", number: "АЗС 144", address: "Новосибирск, ул. Толмачёвская, 23", tz: "+07:00", mode: "none", own: "Франчайзинг Газпромнефть", region: "Новосибирская область" },
+    // Рейсы по маршруту Москва — Красноярск: реже, с региональной разницей цен (pk).
+    { name: "АЗС 52 · Барнаул", number: "АЗС 52", address: "Барнаул, Павловский тракт, 188", tz: "+07:00", mode: "disc", own: "Газпромнефть", region: "Алтайский край", w: 1.2, pk: 0.99 },
+    { name: "АЗС 260 · Красноярск", number: "АЗС 260", address: "Красноярск, ул. Шахтёров, 6", tz: "+07:00", mode: "disc", own: "Газпромнефть", region: "Красноярский край", w: 0.7, pk: 1.03 },
+    { name: "АЗС 18 · Тюмень", number: "АЗС 18", address: "Тюмень, Червишевский тракт, 9", tz: "+05:00", mode: "none", own: "Франчайзинг Газпромнефть", region: "Тюменская область", w: 0.5, pk: 0.98 },
+    { name: "АЗС 77 · Екатеринбург", number: "АЗС 77", address: "Екатеринбург, Сибирский тракт, 12 км", tz: "+05:00", mode: "disc", own: "Газпромнефть", region: "Свердловская область", w: 0.45, pk: 1.01 },
+    { name: "АЗС 401 · Челябинск", number: "АЗС 401", address: "Челябинск, Копейское шоссе, 35", tz: "+05:00", mode: "markup", own: "Партнёры", region: "Челябинская область", w: 0.35, pk: 1.0 },
+    { name: "АЗС 9 · Москва", number: "АЗС 9", address: "Москва, МКАД, 41 км", tz: "+03:00", mode: "disc", own: "Газпромнефть", region: "Москва", w: 0.2, pk: 1.05 },
+  ];
+  // Координаты АЗС — F_LATITUDE / F_LONGITUDE транзакционного отчёта (или location из get_azs_list_v1); в прототипе — города.
+  const AZS_COORDS = {
+    "АЗС 412": [55.06, 82.90], "АЗС 118": [54.98, 82.99], "АЗС 144": [55.02, 82.80], "АЗС 207": [54.76, 83.10],
+    "АЗС 33": [56.49, 84.95], "АЗС 590": [55.35, 86.09], "АЗС 71": [54.99, 73.37], "АЗС 305": [54.64, 83.30],
+    "АЗС 52": [53.35, 83.78], "АЗС 260": [56.01, 92.89], "АЗС 18": [57.15, 65.53], "АЗС 77": [56.84, 60.65],
+    "АЗС 401": [55.16, 61.40], "АЗС 9": [55.60, 37.72],
+  };
+  // Цены на стеле — prices[] справочника АЗС (get_azs_list_v1, бесплатный): GoodsCode, Price, DateFrom.
+  // Цены есть не у всех АЗС: в живом справочнике — у 697 из 2 500 загруженных.
+  const NO_PRICES = new Set(["АЗС 305", "АЗС 18"]);
+  stations.forEach((s, i) => {
+    [s.lat, s.lon] = AZS_COORDS[s.number];
+    s.prices = NO_PRICES.has(s.number) ? [] : products.filter(p => p.fuel && !(p.name === "СУГ" && i % 3 === 0)).map(p => ({
+      name: p.name, code: p.code, price: Math.round(p.price * (s.pk ?? 1) * 100) / 100,
+      daysAgo: (i % 5) + 1,
+    }));
+  });
+
+  // Группы карт договора (get_card_groups). У ДМ-000103 и ДМ-000104 групп нет — блок скрыт.
+  const GROUP_RULES = [
+    { name: "Колонна 1", match: /колонна 1/ },
+    { name: "Колонна 2", match: /колонна 2/ },
+    { name: "Доставка", match: /доставка/ },
+    { name: "Сервис и торговые", match: /сервис|торговые/ },
+  ];
+  const CONTRACT_GROUPS = { c1: ["Колонна 1", "Колонна 2", "Доставка", "Сервис и торговые"], c2: ["Колонна 1", "Доставка"] };
+  const NO_GROUP = "Без группы";
+
+  // Таблица № 3 приложения 1 к договору оферты (ред. 10.2026): ставка сервисного сбора по объёму прошлого месяца.
+  const TIERS = [
+    { to: 40000, fee: 3.75 }, { to: 100000, fee: 3 }, { to: 150000, fee: 2.5 }, { to: 500000, fee: 1.5 }, { to: Infinity, fee: 1 },
+  ];
+  const tierFor = (litres) => TIERS.find(x => litres <= x.to) || TIERS[TIERS.length - 1];
+  const hourWeights = [0.15,0.1,0.1,0.1,0.15,1.5,5,9,10,9,8,7,7,7,8,8,9,9,7,5,4,3,2,0.6];
+  const hw = hourWeights.reduce((a, b) => a + b, 0);
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today.getTime() + 86400000);
+  // Три месяца: текущий (по сегодня) и два полных предыдущих.
+  const MONTHS = [0, 1, 2].map(i => {
+    const start = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const end = i === 0 ? tomorrow : new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
+    const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+    return { i, key, start, end, label: `${monthsNom[start.getMonth()]} ${start.getFullYear()}`, gen: monthsGen[start.getMonth()], short: monthsShort[start.getMonth()] };
+  });
+  const monthByKey = new Map(MONTHS.map(m => [m.key, m]));
+  const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const daysOf = (m) => { const out = []; for (let d = new Date(m.start); d < m.end; d.setDate(d.getDate() + 1)) out.push(new Date(d)); return out; };
+  const tzMinutes = (tz) => { const m = /([+-])(\d{2}):(\d{2})/.exec(tz || "+03:00"); return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])); };
+  const dayKey = (t) => `${t.getFullYear()}-${t.getMonth()}-${t.getDate()}`;
+  const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+  function buildDataset(c) {
+    const rnd = mulberry32([...c.key].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7));
+    const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+    const stationWeight = stations.reduce((a, s) => a + (s.w ?? 1), 0);
+    const pickStation = () => { let x = rnd() * stationWeight; for (const s of stations) { x -= s.w ?? 1; if (x < 0) return s; } return stations[0]; };
+    const pickProduct = () => { let r = rnd(), acc = 0; for (const p of products) { acc += p.w; if (r < acc) return p; } return products[0]; };
+    const pickHour = () => { let r = rnd() * hw; for (let h = 0; h < 24; h++) { r -= hourWeights[h]; if (r < 0) return h; } return 12; };
+    const cardCount = Math.max(1, Math.min(60, Math.round(Math.max(c.monthL, c.prevMonthL) / 450)));
+    // Комментарий карты — поле comment из get_cards_v2 (бесплатный); в прототипе условные ТС.
+    const COMMENTS = ["КамАЗ 65115 · колонна 1", "КамАЗ 5490 · колонна 1", "ГАЗель Next · доставка", "Ford Transit · сервис", "Lada Largus · торговые", "Hyundai HD78 · доставка", "МАЗ 5440 · колонна 2", "резервная карта", "", ""];
+    const cards = Array.from({ length: cardCount }, (_, i) => ({ id: i, last4: String(1000 + Math.floor(rnd() * 9000)), comment: COMMENTS[Math.floor(rnd() * COMMENTS.length)] }));
+    // Группа карты — group_id / group_name из get_cards_v2 (бесплатный); список групп — get_card_groups.
+    // В прототипе группа выводится из комментария; у договоров без групп поле пустое.
+    const groupNames = CONTRACT_GROUPS[c.key] || [];
+    cards.forEach(card => { card.group = GROUP_RULES.find(g => groupNames.includes(g.name) && g.match.test(card.comment))?.name ?? null; });
+    // Рубли калибруются, только если средняя цена литра правдоподобна: у части DEMO-договоров она ~2–10 ₽/л.
+    const implied = c.monthL ? c.monthRub / c.monthL : 0;
+    const calibrateRub = implied >= 30 && implied <= 150;
+    // Позапрошлый месяц DEMO не отдаёт: в базе он появится из отчёта; здесь — оценка от прошлого месяца.
+    const litres = [c.monthL, c.prevMonthL, c.prevMonthL ? c.prevMonthL * (0.88 + rnd() * 0.2) : 0];
+    const feeRates = [tierFor(litres[1]).fee / 100, tierFor(litres[2]).fee / 100, tierFor(litres[2]).fee / 100];
+    // Синтетика подогнана под рубли договора; тот же множитель приводит к нему цены справочника АЗС.
+    const priceScale = {};
+
+    function makeRow(day, forced) {
+      const p = forced || pickProduct();
+      const t = new Date(day); t.setHours(pickHour(), Math.floor(rnd() * 60));
+      if (t > now) return null;
+      const qty = p.fuel ? 22 + rnd() * 36 + (rnd() < 0.006 ? 55 : 0) : 1;
+      const station = pickStation();
+      const unit = p.fuel ? p.price * (station.pk ?? 1) * (0.98 + rnd() * 0.04) : 90 + rnd() * 600;
+      const mode = p.fuel ? station.mode : "none";
+      // Скидка на собственных АЗС — около 6,6 %, как в отчёте за апрель 2024; наценка партнёров — 1–2,5 %.
+      const k = mode === "disc" ? 1 - (0.055 + rnd() * 0.022) : mode === "markup" ? 1 + (0.01 + rnd() * 0.015) : 1;
+      const id = String(41000000000 + Math.floor(rnd() * 900000000));
+      // t — местное время АЗС; utc — момент транзакции (по нему сортировка и сравнение между регионами).
+      const utc = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours(), t.getMinutes()) - tzMinutes(station.tz) * 60000;
+      return { id, t, utc, card: pick(cards), station: station.name, azs: station, own: station.own, region: station.region, product: p, qty, price: unit * k, priceNoDisc: unit, storno: false };
+    }
+    function generate(m, targetL, targetRub, feeRate) {
+      const rows = [];
+      if (targetL <= 0) return rows;
+      const dayCount = Math.max(1, Math.round((Math.min(m.end, now) - m.start) / 86400000));
+      const perDay = targetL / dayCount / 42 / 0.97;
+      for (const d of daysOf(m)) {
+        const weekend = d.getDay() === 0 || d.getDay() === 6;
+        const n = Math.round(perDay * (weekend ? 0.7 : 1.12) * (0.85 + rnd() * 0.3));
+        for (let k = 0; k < n; k++) rows.push(makeRow(d));
+      }
+      if (!rows.some(r => r && r.product.fuel)) {
+        const d = new Date(m.start.getTime() + rnd() * Math.max(1, Math.min(m.end, now) - m.start));
+        rows.push(makeRow(new Date(d.getFullYear(), d.getMonth(), d.getDate()), products[2]));
+      }
+      const valid = rows.filter(Boolean);
+      const fuelL = valid.filter(r => r.product.fuel).reduce((a, r) => a + r.qty, 0);
+      const kL = fuelL ? targetL / fuelL : 1;
+      valid.forEach(r => { if (r.product.fuel) r.qty *= kL; });
+      const sumRub = valid.reduce((a, r) => a + r.qty * r.price, 0);
+      const kR = targetRub && sumRub ? targetRub / sumRub : 1;
+      priceScale[m.key] = kR;
+      // discount как сумма со скидкой минус сумма без скидки: < 0 — скидка, > 0 — наценка
+      valid.forEach(r => { r.price *= kR; r.priceNoDisc *= kR; r.sum = r.qty * r.price; r.sumNoDisc = r.qty * r.priceNoDisc; r.discount = r.sum - r.sumNoDisc; r.fee = r.sum * feeRate; });
+      return valid;
+    }
+    const byMonth = new Map();
+    MONTHS.forEach((m, i) => {
+      if (!(m.key in priceScale)) priceScale[m.key] = 1;
+      const rows = generate(m, litres[i], calibrateRub ? litres[i] * implied : 0, feeRates[i]).sort((a, b) => b.utc - a.utc);
+      if (rows.length > 20) [3, 17].forEach(k => { rows[k].storno = true; });
+      byMonth.set(m.key, rows);
+    });
+    return { byMonth, feeRates, litres, calibrateRub, priceScale, cards, groupNames };
+  }
+  const datasets = new Map();
+  const datasetFor = (c) => { if (!datasets.has(c.key)) datasets.set(c.key, buildDataset(c)); return datasets.get(c.key); };
+  const rowsOf = (ds, mk) => ds.byMonth.get(mk) || [];
+  const fuelRowsOf = (ds, mk) => rowsOf(ds, mk).filter(r => r.product.fuel);
+  const cls = (r) => Math.abs(r.discount) < 0.005 ? "none" : r.discount < 0 ? "disc" : "markup";
+  const isNight = (r) => r.t.getHours() < 5;
+  const isBig = (r) => r.product.fuel && r.qty > cfg.litres;
+  function totals(rows) {
+    const t = { disc: 0, fee: 0, sum: 0, base: 0, l: 0, n: rows.length };
+    rows.forEach(r => { t.disc += -r.discount; t.fee += r.fee; t.sum += r.sum; t.base += r.sumNoDisc; if (r.product.fuel) t.l += r.qty; });
+    return t;
+  }
+  // Расход месяца: текущий — из get_contract_data, прошлые — из транзакций в базе.
+  function monthSpend(c, ds, m) {
+    if (m.i === 0) return { rub: c.monthRub, l: c.monthL, source: "get_contract_data" };
+    const t = totals(rowsOf(ds, m.key));
+    return { rub: t.sum, l: t.l, source: "db" };
+  }
+
+  // ---------- счётчики: от прежнего значения к новому ----------
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+  const shown = new WeakMap();
+  function countTo(el, target, { duration = 1100, delay = 0, suffix = "", format = (v) => rub.format(v) } = {}) {
+    const from = shown.get(el) ?? 0;
+    shown.set(el, target);
+    if (reduceMotion || from === target) { el.textContent = format(target) + suffix; return; }
+    const start = performance.now() + delay;
+    const step = (ts) => {
+      const p = Math.min(1, Math.max(0, (ts - start) / duration));
+      el.textContent = format(from + (target - from) * easeOut(p)) + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // ---------- общие элементы ----------
+  const fmtDate = (d) => d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const fmtZone = (ms, timeZone) => new Date(ms).toLocaleString("ru-RU", { timeZone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const fmtMsk = (r) => fmtZone(r.utc, "Europe/Moscow");
+  const fmtUtc = (r) => fmtZone(r.utc, "UTC");
+  const utcLabel = (tz) => `UTC${tz.replace(":00", "").replace(/([+-])0/, "$1")}`;
+  // Цвета видов топлива — поле hex_color справочника Goods; ДТ в тёмной теме светлее, иначе не виден.
+  // Цвет текста поверх заливки: тёмный на светлых цветах (жёлтый АИ-92), белый на тёмных.
+  const inkOn = (color) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(color.trim());
+    if (!m) return "#ffffff";
+    const n = parseInt(m[1], 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255));
+    return lum > 160 ? "#0b1b3d" : "#ffffff";
+  };
+  const fuelColor = (p) => p.name === "ДТ" ? css("--fuel-dt") : p.color || css("--fuel-other");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  const productLabel = (p) => p.color
+    ? `<span class="prod"><span class="prod-dot" style="background:${p.color}" aria-hidden="true"></span>${esc(p.name)}</span>`
+    : `<span class="prod">${esc(p.name)}</span>`;
+  const ownChip = (own) => {
+    const k = own === "Газпромнефть" ? "gpn" : own === "Партнёры" ? "partner" : "";
+    const label = own === "Франчайзинг Газпромнефть" ? "франчайзинг" : own === "Газпромнефть" ? "сеть" : "партнёр";
+    return `<span class="own-chip ${k}" title="${esc(own)}">${label}</span>`;
+  };
+  const discText = (v) => `${v > 0.004 ? "−" : v < -0.004 ? "+" : ""}${rate.format(Math.abs(Math.round(v * 100) / 100))}%`;
+  const mainFuelOf = (rows) => {
+    const litres = new Map(); rows.forEach(r => litres.set(r.product.name, (litres.get(r.product.name) || 0) + r.qty));
+    return [...litres.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  };
+
+  // ---------- графики ----------
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const charts = {};
+  const CHART_IDS = { geo: "ch-geo", daily: "ch-daily", disc: "ch-disc", products: "ch-products", cards: "ch-cards", heat: "ch-heat" };
+  // Графики создаются при первом показе блока: невидимые блоки не тратят память и время.
+  // Карту рисуем через canvas: много точек АЗС и подробные границы быстрее двигаются, чем в SVG.
+  const chart = (k) => charts[k] || (window.echarts ? (charts[k] = echarts.init($(CHART_IDS[k]), null, { renderer: k === "geo" ? "canvas" : "svg" })) : null);
+  const anim = reduceMotion ? { animation: false } : { animationDuration: 1100, animationEasing: "cubicOut", animationDurationUpdate: 800, animationEasingUpdate: "cubicInOut" };
+  const vGrad = () => new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: css("--bar-a") }, { offset: 1, color: css("--bar-b") }]);
+  const hGrad = () => new echarts.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: css("--bar-b") }, { offset: 1, color: css("--bar-a") }]);
+  const emptyGraphic = (show, text) => ({ graphic: [{ type: "text", left: "center", top: "middle", invisible: !show, style: { text, fill: css("--ink-3"), font: "14px Onest, system-ui, sans-serif" } }] });
+  function base() {
+    return {
+      ...anim,
+      textStyle: { fontFamily: "Onest, system-ui, sans-serif", color: css("--ink-2") },
+      grid: { left: 8, right: 16, top: 12, bottom: 8, containLabel: true },
+      tooltip: { confine: true, backgroundColor: css("--surface"), borderColor: css("--line"), textStyle: { color: css("--ink"), fontSize: 12 }, extraCssText: "border-radius:10px;box-shadow:0 8px 24px rgba(29,78,216,.18)" },
+    };
+  }
+  const axisCommon = () => ({ axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: css("--ink-3"), fontSize: 11 }, splitLine: { lineStyle: { color: css("--line"), type: "dashed" } } });
+  function renderHBar(ch, labels, values, fmt, delay, emptyText) {
+    ch.setOption({ ...base(), ...emptyGraphic(!values.length, emptyText),
+      grid: { left: 8, right: 64, top: 4, bottom: 4, containLabel: true },
+      tooltip: { ...base().tooltip, trigger: "item", valueFormatter: fmt },
+      xAxis: { type: "value", show: false },
+      yAxis: { type: "category", data: labels, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: css("--ink"), fontSize: 12, fontFamily: "JetBrains Mono, monospace" } },
+      series: [{ type: "bar", data: values, barWidth: 14, showBackground: true, backgroundStyle: { color: css("--surface-2"), borderRadius: 7 },
+        itemStyle: { color: hGrad(), borderRadius: 7 },
+        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 11, formatter: (p) => fmt(p.value) },
+        animationDelay: (i) => delay + i * 90 }],
+    }, true);
+  }
+
+  // ---------- блоки ----------
+  // Один месяц на весь дашборд: выбирается в шапке рядом с номером договора.
+  let selectedMonth = MONTHS[0].key;
+  const month = () => monthByKey.get(selectedMonth) || MONTHS[0];
+  let current = null;
+  let firstRender = true;
+
+  function renderConsumption(ds) {
+    const c = current, m = month("consumption");
+    const spend = monthSpend(c, ds, m);
+    const prevM = MONTHS[m.i + 1];
+    const prev = prevM ? monthSpend(c, ds, prevM) : null;
+    $("kpi-month-label").textContent = `Израсходовано в ${m.gen}`;
+    countTo($("kpi-month-rub"), spend.rub, { delay: firstRender ? 490 : 0 });
+    countTo($("kpi-month-l"), spend.l, { delay: firstRender ? 610 : 0 });
+    $("kpi-month-src").innerHTML = spend.source === "db"
+      ? `из базы · транзакции за ${m.label.toLowerCase()}`
+      : `из <span class="chip">get_contract_data</span> · consumption_for_month, _volume`;
+    if (prev && prev.l > 0) {
+      const share = spend.l / prev.l;
+      const pct = Math.round((share - 1) * 100);
+      $("kpi-month-cmp").innerHTML = `${lit.format(share * 100)}% от объёма ${prevM.gen.replace(/е$/, "я")} (${rub.format(prev.l)} л) <span class="delta">${pct > 0 ? "+" : ""}${pct}%</span>`;
+      requestAnimationFrame(() => requestAnimationFrame(() => { $("kpi-gauge").style.width = `${Math.min(100, share * 100)}%`; }));
+    } else {
+      $("kpi-month-cmp").textContent = prevM ? "В предыдущем месяце расхода не было" : "Предыдущий месяц вне истории (3 месяца)";
+      $("kpi-gauge").style.width = "0";
+    }
+  }
+
+  // Скидки: фильтры по виду топлива, типу и региону АЗС; без явного выбора — основное топливо.
+  const filters = { fuel: "", own: "", region: "" };
+  let fuelTouched = false;
+  let mainFuel = "";
+  const FILTER_DEFS = [
+    ["fuel", "f-fuel", "Все виды топлива", (r) => r.product.name],
+    ["own", "f-own", "Все типы АЗС", (r) => r.own],
+    ["region", "f-region", "Все регионы", (r) => r.region],
+  ];
+  const matches = (r) => FILTER_DEFS.every(([key, , , get]) => !filters[key] || get(r) === filters[key]);
+  function fillFilters(rows) {
+    mainFuel = mainFuelOf(rows);
+    for (const [key, id, allLabel, get] of FILTER_DEFS) {
+      const values = [...new Set(rows.map(get))].sort((a, b) => a.localeCompare(b, "ru"));
+      if (filters[key] && !values.includes(filters[key])) filters[key] = "";
+      if (key === "fuel" && (!fuelTouched || (filters.fuel && !values.includes(filters.fuel)))) { filters.fuel = mainFuel; fuelTouched = false; }
+      const select = $(id);
+      select.innerHTML = `<option value="">${allLabel}</option>` + values.map(v => `<option value="${v}">${v}${key === "fuel" && v === mainFuel ? " — основное" : ""}</option>`).join("");
+      select.value = filters[key];
+      select.classList.toggle("on", Boolean(filters[key]) && !(key === "fuel" && filters.fuel === mainFuel));
+      select.disabled = values.length === 0;
+    }
+    $("f-reset").hidden = !(filters.own || filters.region || filters.fuel !== mainFuel);
+  }
+  function discTotals(ds, mk) { return totals(fuelRowsOf(ds, mk).filter(matches)); }
+  function renderDiscount(ds) {
+    const m = month("disc");
+    const rows = fuelRowsOf(ds, m.key);
+    fillFilters(rows);
+    const tot = totals(rows.filter(matches));
+    const scope = FILTER_DEFS.filter(([key]) => filters[key]).map(([key]) => key === "fuel" && filters.fuel === mainFuel ? `${filters.fuel} (основное топливо)` : filters[key]);
+    $("disc-scope").textContent = scope.length ? scope.join(" · ") : "всё топливо";
+    const d0 = firstRender ? 300 : 0;
+    countTo($("d-save"), tot.disc, { delay: d0, suffix: " ₽" });
+    countTo($("d-fee"), tot.fee, { delay: d0 + 100, suffix: " ₽" });
+    $("d-fee-l").textContent = `сервисный сбор за месяц · ${rate.format(ds.feeRates[m.i] * 100)}% суммы`;
+    const pct = tot.base ? tot.disc / tot.base * 100 : 0;
+    $("d-pct").classList.toggle("neg", pct < 0);
+    countTo($("d-pct"), pct, { delay: d0 + 200, suffix: " %", format: (v) => rate.format(Math.round(v * 100) / 100) });
+    $("d-pct-l").textContent = pct < 0 ? "наценка больше скидок: процент к цене АЗС" : "процент скидки к цене АЗС";
+    const final = tot.l ? (tot.sum + tot.fee) / tot.l : 0;
+    countTo($("d-final"), final, { delay: d0 + 300, suffix: " ₽/л", format: (v) => rub2.format(v) });
+    $("d-final-l").textContent = tot.l ? `средняя цена литра со скидкой и сбором · на стеле ${rub2.format(tot.base / tot.l)} ₽/л` : "заправок в этом месяце нет";
+    const ch = chart("disc");
+    if (!ch) return;
+    const days = daysOf(m);
+    const index = new Map(days.map((d, i) => [dayKey(d), i]));
+    const buckets = days.map(() => []);
+    rows.filter(matches).forEach(r => { const i = index.get(dayKey(r.t)); if (i !== undefined) buckets[i].push(r); });
+    const finalPrice = buckets.map(b => { const t = totals(b); return t.l ? Math.round((t.sum + t.fee) / t.l * 100) / 100 : null; });
+    const pumpPrice = buckets.map(b => { const t = totals(b); return t.l ? Math.round(t.base / t.l * 100) / 100 : null; });
+    const values = finalPrice.concat(pumpPrice).filter(v => v !== null);
+    const lo = values.length ? Math.floor(Math.min(...values) - 1) : 0;
+    const hi = values.length ? Math.ceil(Math.max(...values) + 1) : 1;
+    ch.setOption({ ...base(), ...emptyGraphic(!values.length, "Нет заправок по выбранным фильтрам"),
+      grid: { left: 8, right: 56, top: 34, bottom: 4, containLabel: true },
+      legend: { top: 0, right: 0, itemWidth: 16, itemHeight: 8, textStyle: { color: css("--ink-2"), fontSize: 12 }, data: [{ name: "Итоговая цена литра" }, { name: "Цена на стеле АЗС" }] },
+      tooltip: { ...base().tooltip, trigger: "axis", valueFormatter: (v) => v === null || v === undefined ? "—" : `${rub2.format(v)} ₽/л` },
+      xAxis: { type: "category", boundaryGap: false, data: days.map(x => x.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })), ...axisCommon(), splitLine: { show: false } },
+      yAxis: { type: "value", min: lo, max: hi, ...axisCommon(), axisLabel: { color: css("--ink-3"), fontSize: 11, formatter: (v) => `${v} ₽` } },
+      series: [
+        { name: "Итоговая цена литра", type: "line", data: finalPrice, connectNulls: true, smooth: 0.25, symbol: "circle", symbolSize: 6,
+          lineStyle: { width: 2.5, color: css("--blue-600") }, itemStyle: { color: css("--blue-600"), borderColor: css("--surface"), borderWidth: 2 },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: css("--blue-200") }, { offset: 1, color: "rgba(255,255,255,0)" }]), opacity: 0.6 },
+          // Подпись последней точки только при двух точках и больше: на одной точке ECharts анимирует её из NaN.
+          endLabel: { show: finalPrice.filter(v => v !== null).length > 1, color: css("--blue-700"), fontWeight: 600, formatter: (p) => p.value == null ? "" : `${rub2.format(p.value)}` }, animationDuration: 1400 },
+        { name: "Цена на стеле АЗС", type: "line", data: pumpPrice, connectNulls: true, smooth: 0.25, showSymbol: false,
+          lineStyle: { width: 1.5, type: "dashed", color: css("--ink-3") }, itemStyle: { color: css("--ink-3") }, animationDuration: 1400 },
+      ],
+    }, true);
+  }
+  for (const [key, id] of FILTER_DEFS) {
+    $(id).addEventListener("change", (e) => { filters[key] = e.target.value; if (key === "fuel") fuelTouched = true; renderBlock("disc"); });
+  }
+  $("f-reset").addEventListener("click", () => { FILTER_DEFS.forEach(([key]) => { filters[key] = ""; }); fuelTouched = false; renderBlock("disc"); });
+
+  // Группы карт: статистика по группам по аналогии с регионами АЗС; блок есть, только если у договора есть группы.
+  const grpFilter = { group: "", fuel: "" };
+  const hasGroups = (ds) => ds.groupNames.length > 0;
+  const groupOf = (r) => r.card.group || NO_GROUP;
+  function groupStats(rows) {
+    const t = totals(rows);
+    const fuels = new Map();
+    rows.forEach(r => fuels.set(r.product, (fuels.get(r.product) || 0) + r.qty));
+    return { ...t, n: rows.length, fuels: [...fuels.entries()].sort((a, b) => b[1] - a[1]),
+      pct: t.base ? t.disc / t.base * 100 : 0, price: t.l ? t.sum / t.l : 0, final: t.l ? (t.sum + t.fee) / t.l : 0 };
+  }
+  const fuelMix = (s) => `<div class="fuel-mix">${s.fuels.slice(0, 4).map(([p, l]) => `<span>${productLabel(p).replace('class="prod"', 'class="prod" style="gap:5px"')} ${lit.format(l / s.l * 100)}%</span>`).join("")}</div>`;
+  function renderGroups(ds) {
+    const panel = blockEl("groups");
+    panel.hidden = !hasGroups(ds);
+    if (!hasGroups(ds)) return;
+    const m = month("groups");
+    const all = fuelRowsOf(ds, m.key);
+    const names = [...ds.groupNames, ...(all.some(r => !r.card.group) ? [NO_GROUP] : [])];
+    const fuels = [...new Set(all.map(r => r.product.name))].sort((a, b) => a.localeCompare(b, "ru"));
+    if (grpFilter.group && !names.includes(grpFilter.group)) grpFilter.group = "";
+    if (grpFilter.fuel && !fuels.includes(grpFilter.fuel)) grpFilter.fuel = "";
+    $("grp-filter").innerHTML = `<option value="">Все группы · ${names.length}</option>` + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+    $("grp-filter").value = grpFilter.group;
+    $("grp-fuel").innerHTML = `<option value="">Все виды топлива</option>` + fuels.map(f => `<option value="${f}">${f}</option>`).join("");
+    $("grp-fuel").value = grpFilter.fuel;
+    $("grp-filter").classList.toggle("on", Boolean(grpFilter.group));
+    $("grp-fuel").classList.toggle("on", Boolean(grpFilter.fuel));
+    const rows = all.filter(r => !grpFilter.fuel || r.product.name === grpFilter.fuel);
+    const list = names.filter(n => !grpFilter.group || n === grpFilter.group).map(name => {
+      const gr = rows.filter(r => groupOf(r) === name);
+      const cardsTotal = ds.cards.filter(c => (c.group || NO_GROUP) === name).length;
+      return { name, cardsTotal, cardsUsed: new Set(gr.map(r => r.card)).size, s: groupStats(gr) };
+    }).sort((a, b) => (a.name === NO_GROUP) - (b.name === NO_GROUP) || b.s.l - a.s.l); // «Без группы» — всегда последней
+    const maxL = Math.max(1, ...list.map(g => g.s.l));
+    $("grp-scope").textContent = `${grpFilter.group || "все группы"} · ${grpFilter.fuel || "всё топливо"}`;
+    $("grp-body").innerHTML = list.map((g, i) => `<tr class="row-in" style="--i:${firstRender ? i : i - 8}" tabindex="0" data-group="${esc(g.name)}" aria-label="Статистика группы ${esc(g.name)}">
+        <td><span class="grp-name">${esc(g.name)}</span><span class="grp-cards">${g.cardsUsed} из ${g.cardsTotal} карт заправлялись</span><span class="grp-bar" style="width:${Math.max(2, g.s.l / maxL * 100)}%"></span></td>
+        <td class="num">${lit.format(g.s.l)}</td>
+        <td class="num">${g.s.n}</td>
+        <td class="num" title="${g.s.l ? `со сбором ${rub2.format(g.s.sum + g.s.fee)} ₽` : ""}">${g.s.l ? rub.format(g.s.sum) : "—"}</td>
+        <td>${g.s.l ? fuelMix(g.s) : '<span class="hint">заправок нет</span>'}</td>
+        <td class="num ${g.s.pct > 0.004 ? "v-pos" : g.s.pct < -0.004 ? "v-neg" : "v-zero"}">${g.s.l ? discText(g.s.pct) : "—"}</td>
+        <td class="num">${g.s.l ? `${rub2.format(g.s.price)} ₽` : "—"}</td></tr>`).join("")
+      || `<tr><td colspan="7" class="empty">Нет заправок по выбранным фильтрам</td></tr>`;
+    const tot = groupStats(rows.filter(r => !grpFilter.group || groupOf(r) === grpFilter.group));
+    $("grp-foot").innerHTML = list.length > 1
+      ? `<tr><td>Итого по договору</td><td class="num">${lit.format(tot.l)}</td><td class="num">${tot.n}</td><td class="num" title="со сбором ${rub2.format(tot.sum + tot.fee)} ₽">${rub.format(tot.sum)}</td><td>${tot.l ? fuelMix(tot) : ""}</td><td class="num">${discText(tot.pct)}</td><td class="num">${tot.l ? `${rub2.format(tot.price)} ₽` : "—"}</td></tr>` : "";
+    $("grp-note").textContent = grpFilter.fuel
+      ? "нажмите на строку группы, чтобы открыть статистику"
+      : "нажмите на строку группы, чтобы открыть статистику · цена литра без фильтра — среднее по видам топлива";
+  }
+  ["group", "fuel"].forEach(key => {
+    $(key === "group" ? "grp-filter" : "grp-fuel").addEventListener("change", (e) => { grpFilter[key] = e.target.value; renderBlock("groups"); });
+  });
+  $("grp-body").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-group]"); if (tr) openGroup(tr.dataset.group); });
+  $("grp-body").addEventListener("keydown", (e) => { const tr = e.target.closest("tr[data-group]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openGroup(tr.dataset.group); } });
+  $("grp-dialog").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+
+  // Окно группы — по аналогии с карточкой АЗС: всё топливо за выбранный месяц.
+  function openGroup(name) {
+    const ds = datasetFor(current);
+    const m = month("groups");
+    const all = fuelRowsOf(ds, m.key);
+    const rows = all.filter(r => groupOf(r) === name);
+    const tot = totals(rows), totAll = totals(all);
+    const kg = rows.reduce((a, r) => a + r.qty * r.product.density, 0);
+    const hours = Array(24).fill(0); rows.forEach(r => hours[r.t.getHours()]++);
+    const peak = hours.indexOf(Math.max(...hours));
+    const last = rows.reduce((a, r) => (!a || r.utc > a.utc ? r : a), null);
+    const row = (k, v) => `<div class="txd-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    const byFuel = new Map(); rows.forEach(r => { const f = byFuel.get(r.product) || []; f.push(r); byFuel.set(r.product, f); });
+    const fuelRows = [...byFuel.entries()].sort((a, b) => totals(b[1]).l - totals(a[1]).l).map(([p, fr]) => {
+      const t = totals(fr);
+      const pct = t.base ? t.disc / t.base * 100 : 0;
+      return `<tr><td>${productLabel(p)}</td><td class="num">${rub2.format(t.base / t.l)}</td><td class="num">${rub2.format(t.sum / t.l)}</td>
+        <td class="num ${pct > 0.004 ? "v-pos" : pct < -0.004 ? "v-neg" : "v-zero"}">${discText(pct)}</td><td class="num">${rub2.format((t.sum + t.fee) / t.l)}</td><td class="num">${lit.format(t.l)}</td><td class="num">${fr.length}</td></tr>`;
+    }).join("");
+    const byAzs = new Map(); rows.forEach(r => { const a = byAzs.get(r.azs.number) || { st: r.azs, l: 0, n: 0, disc: 0, base: 0 }; a.l += r.qty; a.n++; a.disc += -r.discount; a.base += r.sumNoDisc; byAzs.set(r.azs.number, a); });
+    const azsRows = [...byAzs.values()].sort((a, b) => b.l - a.l).slice(0, 8).map(a =>
+      `<tr><td>${esc(a.st.number)} ${ownChip(a.st.own)}<span class="chk-comment">${esc(a.st.address)}</span></td><td class="num">${lit.format(a.l)}</td><td class="num">${a.n}</td><td class="num ${a.disc > 0.004 ? "v-pos" : a.disc < -0.004 ? "v-neg" : "v-zero"}">${discText(a.base ? a.disc / a.base * 100 : 0)}</td></tr>`).join("");
+    const byCard = new Map(); rows.forEach(r => { const c = byCard.get(r.card) || { n: 0, l: 0, sum: 0, last: 0 }; c.n++; c.l += r.qty; c.sum += r.sum; c.last = Math.max(c.last, r.utc); byCard.set(r.card, c); });
+    const groupCards = ds.cards.filter(c => (c.group || NO_GROUP) === name);
+    const cardRows = groupCards.map(c => [c, byCard.get(c) || { n: 0, l: 0, sum: 0, last: 0 }]).sort((a, b) => b[1].l - a[1].l).map(([c, v]) =>
+      `<tr><td><span class="mono">••${c.last4}</span>${c.comment ? `<span class="chk-comment">${esc(c.comment)}</span>` : ""}</td><td class="num">${v.n}</td><td class="num">${v.n ? lit.format(v.l) : "—"}</td><td class="num">${v.n ? rub2.format(v.sum) : "—"}</td><td class="mono muted">${v.last ? fmtZone(v.last, "Europe/Moscow") : "не заправлялась"}</td></tr>`).join("");
+    $("grpd-kind").textContent = `Группа карт · ${m.label}`;
+    $("grpd-title").textContent = name;
+    $("grpd-sub").textContent = `${groupCards.length} карт · ${byCard.size} заправлялись`;
+    $("grpd-body").innerHTML = `
+      <section class="txd-sec"><span class="subhead">Реализация группы · ${m.label.toLowerCase()}</span>
+        ${rows.length ? `
+        ${row("Заправлено", `${lit.format(tot.l)} л · ${lit.format(kg / 1000)} т`)}
+        ${row("Сумма по договору", `${rub2.format(tot.sum)} ₽`)}
+        ${row(tot.disc >= 0 ? "Скидка" : "Наценка", `<span class="${tot.disc >= 0 ? "v-pos" : "v-neg"}">${tot.disc >= 0 ? "−" : "+"}${rub2.format(Math.abs(tot.disc))} ₽ · ${discText(tot.base ? tot.disc / tot.base * 100 : 0)}</span>`)}
+        ${row("Сервисный сбор", `${rub2.format(tot.fee)} ₽`)}
+        ${row("Итоговая цена литра", `${rub2.format((tot.sum + tot.fee) / tot.l)} ₽/л`)}
+        ${row("Заправок", `${rows.length} · в среднем ${lit.format(tot.l / rows.length)} л`)}
+        ${row("Доля в объёме договора", `${lit.format(totAll.l ? tot.l / totAll.l * 100 : 0)}%`)}
+        ${row("Час пик", `${String(peak).padStart(2, "0")}:00–${String(peak).padStart(2, "0")}:59 · ${hours[peak]} заправок`)}
+        ${row("Последняя заправка", last ? `${fmtDate(last.t)} ${utcLabel(last.azs.tz)} · ${fmtMsk(last)} МСК · ${esc(last.azs.number)}` : "—")}` : `<div class="empty">В этом месяце карты группы не заправлялись</div>`}
+      </section>
+      ${rows.length ? `<section class="txd-sec"><span class="subhead">Виды топлива, ₽/л</span>
+        <div class="table-scroll"><table class="chk-table azs-table"><thead><tr><th>Топливо</th><th class="num">На стеле</th><th class="num">По договору</th><th class="num">Скидка</th><th class="num">Со сбором</th><th class="num">Литры</th><th class="num">Заправок</th></tr></thead><tbody>${fuelRows}</tbody></table></div>
+      </section>
+      <section class="txd-sec"><span class="subhead">АЗС · ${byAzs.size}</span>
+        <div class="table-scroll"><table class="chk-table azs-table"><thead><tr><th>АЗС</th><th class="num">Литры</th><th class="num">Заправок</th><th class="num">Скидка</th></tr></thead><tbody>${azsRows}</tbody></table></div>
+      </section>` : ""}
+      <section class="txd-sec"><span class="subhead">Карты группы · ${groupCards.length}</span>
+        <div class="table-scroll"><table class="chk-table azs-table"><thead><tr><th>Карта и комментарий</th><th class="num">Заправок</th><th class="num">Литры</th><th class="num">Сумма, ₽</th><th>Последняя, МСК</th></tr></thead><tbody>${cardRows}</tbody></table></div>
+      </section>`;
+    $("grpd-foot").innerHTML = `Группы — <span class="chip">get_card_groups</span>, принадлежность карт — <span class="chip">get_cards_v2</span> (group_id) · бесплатно · <span class="badge-sample">пример данных</span>`;
+    $("grp-dialog").showModal();
+  }
+
+  // Выгрузка транзакционного отчёта за выбранный месяц (все транзакции, колонки как в отчёте ОПТИ 24).
+  // В рабочей версии файл отдаёт сервер из базы (GET /api/contracts/{key}/report?month=&format=) — без запросов к API.
+  const REPORT_COLUMNS = [
+    ["Местное время АЗС", (r) => r.t, "datetime"], ["Часовой пояс", (r) => utcLabel(r.azs.tz)], ["Время МСК", (r) => fmtMsk(r).replace(",", "")],
+    ["Номер транзакции", (r) => r.id], ["Тип операции", (r) => r.storno ? "Сторно" : "Покупка"],
+    ["Карта", (r) => `•••• ${r.card.last4}`], ["Комментарий карты", (r) => r.card.comment || ""], ["Группа карт", (r) => r.card.group || ""],
+    ["АЗС", (r) => r.azs.number], ["Тип АЗС", (r) => r.own], ["Регион", (r) => r.region], ["Адрес АЗС", (r) => r.azs.address],
+    ["Продукт", (r) => r.product.name], ["Код продукта (Goods)", (r) => r.product.code || ""],
+    ["Количество, л", (r) => r.product.fuel ? r.qty : null, "num3"], ["Масса, кг", (r) => r.product.fuel ? r.qty * r.product.density : null, "num3"],
+    ["Цена на стеле, ₽", (r) => r.priceNoDisc, "num2"], ["Цена по договору, ₽", (r) => r.price, "num2"],
+    ["Сумма без скидки, ₽", (r) => r.sumNoDisc, "num2"], ["Скидка (−) / наценка (+), ₽", (r) => r.discount, "num2"],
+    ["Сумма по договору, ₽", (r) => r.sum, "num2"], ["Сервисный сбор, ₽", (r) => r.fee, "num2"], ["Списано со счёта, ₽", (r) => r.sum + r.fee, "num2"],
+  ];
+  const TRANSLIT = { А: "A", Б: "B", В: "V", Г: "G", Д: "D", Е: "E", Ж: "Zh", З: "Z", И: "I", К: "K", Л: "L", М: "M", Н: "N", О: "O", П: "P", Р: "R", С: "S", Т: "T", У: "U", Ф: "F", Х: "Kh", Ц: "Ts", Ч: "Ch", Ш: "Sh", Э: "E", Ю: "Yu", Я: "Ya" };
+  const latin = (s) => [...s.toUpperCase()].map(ch => TRANSLIT[ch] ?? ch).join("").replace(/[^\w-]+/g, "");
+  const reportName = (ext) => `opti24_transactions_${latin(current.number)}_${month("tx").key}.${ext}`;
+  function reportRows() {
+    return [...rowsOf(datasetFor(current), month("tx").key)].sort((a, b) => a.utc - b.utc);
+  }
+  function buildCsv(rows) {
+    // Русский Excel: разделитель «;», десятичная запятая, BOM для UTF-8.
+    const cell = (v, kind) => {
+      if (v === null || v === undefined) return "";
+      if (kind === "datetime") return fmtDate(v).replace(",", "");
+      if (typeof v === "number") return v.toFixed(kind === "num3" ? 3 : 2).replace(".", ",");
+      const s = String(v);
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [REPORT_COLUMNS.map(([h]) => cell(h)).join(";")];
+    rows.forEach(r => lines.push(REPORT_COLUMNS.map(([, get, kind]) => cell(get(r), kind)).join(";")));
+    return "\ufeff" + lines.join("\r\n") + "\r\n";
+  }
+  let xlsxLib = null;
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (xlsxLib) return xlsxLib;
+    xlsxLib = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      s.onload = () => resolve(window.XLSX);
+      s.onerror = () => { xlsxLib = null; reject(new Error("Не удалось загрузить библиотеку Excel")); };
+      document.head.appendChild(s);
+    });
+    return xlsxLib;
+  }
+  async function buildXlsx(rows) {
+    const XLSX = await loadXlsx();
+    const m = month("tx");
+    const header = REPORT_COLUMNS.map(([h]) => h);
+    const body = rows.map(r => REPORT_COLUMNS.map(([, get, kind]) => {
+      const v = get(r);
+      if (v === null || v === undefined) return null;
+      if (typeof v === "number") return Math.round(v * (kind === "num3" ? 1000 : 100)) / (kind === "num3" ? 1000 : 100);
+      return v;
+    }));
+    const t = totals(rows);
+    const info = [[`Транзакционный отчёт · договор ${current.number} · ${m.label}`], [`Сформирован ${new Date().toLocaleString("ru-RU")} · транзакций ${rows.length} · пример данных (DEMO, синтетика)`], []];
+    const sheet = XLSX.utils.aoa_to_sheet([...info, header, ...body,
+      [], ["Итого", null, null, null, null, null, null, null, null, null, null, null, null, null, Math.round(t.l * 1000) / 1000, null, null, null,
+        Math.round(t.base * 100) / 100, Math.round(-t.disc * 100) / 100, Math.round(t.sum * 100) / 100, Math.round(t.fee * 100) / 100, Math.round((t.sum + t.fee) * 100) / 100]], { cellDates: true });
+    // Форматы: даты, литры, рубли; ширина колонок по содержимому.
+    const first = info.length + 1;
+    for (let i = 0; i < body.length + 2; i++) {
+      REPORT_COLUMNS.forEach(([, , kind], c) => {
+        const ref = XLSX.utils.encode_cell({ r: first + i, c });
+        if (!sheet[ref]) return;
+        if (kind === "datetime") sheet[ref].z = "dd.mm.yyyy hh:mm";
+        else if (kind === "num3") sheet[ref].z = "#,##0.000";
+        else if (kind === "num2") sheet[ref].z = "#,##0.00";
+      });
+    }
+    sheet["!cols"] = header.map((h, c) => ({ wch: Math.min(40, Math.max(h.length, ...body.slice(0, 200).map(row => String(row[c] ?? "").length)) + 2) }));
+    sheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: info.length, c: 0 }, e: { r: info.length + body.length, c: header.length - 1 } }) };
+    sheet["!freeze"] = { xSplit: 0, ySplit: info.length + 1 };
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, "Транзакции");
+    return new Blob([XLSX.write(book, { bookType: "xlsx", type: "array", compression: true })]);
+  }
+  // В просмотрщике Claude файл отдаётся через возможность downloads (пользователь подтверждает сохранение);
+  // вне его — обычной ссылкой на Blob.
+  async function saveFile(filename, data) {
+    if (window.claude?.use) {
+      const dl = await claude.use("downloads");
+      if (dl) return dl.save({ filename, data });
+    }
+    const blob = data instanceof Blob ? data : new Blob([data], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return { status: "saved" };
+  }
+  const exportBtn = $("export-btn"), exportMenu = $("export-menu"), exportStatus = $("export-status");
+  function setExportStatus(text, kind = "") { exportStatus.textContent = text; exportStatus.className = `export-status ${kind}`; }
+  function toggleExport(open) {
+    exportMenu.hidden = !open;
+    exportBtn.setAttribute("aria-expanded", String(open));
+    if (open) { $("export-title").textContent = `Отчёт · ${month("tx").label.toLowerCase()} · ${reportRows().length} транзакций`; exportMenu.querySelector("button").focus(); }
+  }
+  exportBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleExport(exportMenu.hidden); });
+  document.addEventListener("click", (e) => { if (!exportMenu.hidden && !e.target.closest(".export")) toggleExport(false); });
+  exportMenu.addEventListener("keydown", (e) => {
+    const items = [...exportMenu.querySelectorAll("button")];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === "Escape") { toggleExport(false); exportBtn.focus(); }
+  });
+  exportMenu.addEventListener("click", async (e) => {
+    const item = e.target.closest("[data-format]");
+    if (!item) return;
+    const format = item.dataset.format;
+    toggleExport(false);
+    const rows = reportRows();
+    if (!rows.length) { setExportStatus("В этом месяце транзакций нет", "err"); return; }
+    exportBtn.setAttribute("aria-busy", "true");
+    setExportStatus(format === "xlsx" ? "Готовлю Excel…" : "Готовлю CSV…");
+    try {
+      const data = format === "xlsx" ? await buildXlsx(rows) : buildCsv(rows);
+      const res = await saveFile(reportName(format), data);
+      setExportStatus(res?.status === "delivered" ? "Файл передан" : `Сохранён ${reportName(format)}`, "ok");
+    } catch (err) {
+      const code = err?.code;
+      setExportStatus(code === "declined" ? "Сохранение отменено" : code === "rate_limited" ? "Подождите, окно сохранения уже открыто" : `Не удалось выгрузить: ${err?.message || "ошибка"}`, code === "declined" ? "" : "err");
+    } finally {
+      exportBtn.removeAttribute("aria-busy");
+    }
+  });
+
+  // Журнал: последние 10 транзакций выбранного месяца, подробности по клику.
+  function openTx(r) {
+    const kind = r.discount < -0.004 ? "скидка" : r.discount > 0.004 ? "наценка" : "без скидки";
+    const perL = r.product.fuel && r.qty ? r.discount / r.qty : 0;
+    const pct = r.sumNoDisc ? r.discount / r.sumNoDisc * 100 : 0;
+    const row = (k, v, extra = "") => `<div class="txd-row ${extra}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    $("txd-kind").textContent = `Транзакция № ${r.id} · ${r.storno ? "сторнирована" : "покупка"}`;
+    $("txd-title").textContent = `${rub2.format(r.sum + r.fee)} ₽ · ${r.product.name}${r.product.fuel ? ` · ${lit.format(r.qty)} л` : ""}`;
+    const tags = [];
+    if (r.storno) tags.push('<span class="tag crit">↺ сторно</span>');
+    if (r.product.fuel) tags.push(`<span class="tag ${kind === "скидка" ? "" : kind === "наценка" ? "crit" : "warn"}" style="${kind === "скидка" ? "color:var(--blue-700)" : ""}">${kind}</span>`);
+    if (isNight(r)) tags.push('<span class="tag warn">☾ ночью</span>');
+    $("txd-tags").innerHTML = tags.join("");
+    const unit = r.product.fuel ? " ₽/л" : " ₽";
+    $("txd-body").innerHTML = `
+      <section class="txd-sec"><span class="subhead">Покупка</span>
+        ${row("Продукт", `${productLabel(r.product)}${r.product.code ? ` <span class="hint">· код ${r.product.code}</span>` : ""}`)}
+        ${r.product.fuel ? row("Количество", `${lit.format(r.qty)} л`) : ""}
+        ${row("Цена на стеле АЗС", `${rub2.format(r.priceNoDisc)}${unit}`)}
+        ${row("Цена по договору", `${rub2.format(r.price)}${unit}`)}
+        ${row(kind === "наценка" ? "Наценка" : "Скидка", `<span class="${r.discount < -0.004 ? "v-pos" : r.discount > 0.004 ? "v-neg" : "v-zero"}">${signed(r.discount)} ₽${r.product.fuel ? ` · ${signed(perL)} ₽/л` : ""} · ${signed(pct)}%</span>`)}
+        ${row("Сумма", `${rub2.format(r.sum)} ₽`)}
+        ${row(`Сервисный сбор · ${rate.format(r.fee / r.sum * 100)}%`, `${rub2.format(r.fee)} ₽`)}
+        ${row("Списано со счёта договора", `${rub2.format(r.sum + r.fee)} ₽`, "total")}
+        ${r.product.fuel ? row("Итоговая цена литра", `${rub2.format((r.sum + r.fee) / r.qty)} ₽/л`) : ""}
+      </section>
+      <section class="txd-sec"><span class="subhead">АЗС</span>
+        ${row("Торговая точка", `${esc(r.azs.number)} ${ownChip(r.own)}`)}
+        ${row("Тип", esc(r.own))}
+        ${row("Адрес", esc(r.azs.address))}
+        ${row("Регион", esc(r.region))}
+      </section>
+      <section class="txd-sec"><span class="subhead">Карта и время</span>
+        ${row("Карта", `••${r.card.last4}${r.card.comment ? ` · ${esc(r.card.comment)}` : ""}`)}
+        ${row("Местное время АЗС", `${fmtDate(r.t)} (${utcLabel(r.azs.tz)})`)}
+        ${row("Время МСК", fmtMsk(r))}
+        ${row("Время UTC", fmtUtc(r))}
+        ${row("Способ оплаты", "Карта · онлайн")}
+      </section>`;
+    $("txd-foot").innerHTML = `Источник: <span class="chip">get_transaction_detail</span> бесплатно · тип АЗС и сервисный сбор — из транзакционного отчёта · <span class="badge-sample">пример данных</span>`;
+    $("tx-dialog").showModal();
+  }
+  $("tx-dialog").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  function renderTx(ds) {
+    const m = month("tx");
+    const rows = rowsOf(ds, m.key);
+    $("tx-title").textContent = m.i === 0 ? "Последние 10 транзакций" : `Последние 10 транзакций · ${m.label.toLowerCase()}`;
+    const tbody = $("tx-body");
+    tbody.innerHTML = rows.length ? "" : `<tr><td colspan="11" class="empty">В этом месяце транзакций нет</td></tr>`;
+    rows.slice(0, 10).forEach((r, i) => {
+      const tags = [];
+      if (r.storno) tags.push('<span class="tag crit">↺ сторно</span>');
+      if (isNight(r)) tags.push('<span class="tag warn">☾ ночью</span>');
+      if (isBig(r)) tags.push('<span class="tag warn">▲ объём</span>');
+      if (r.product.fuel && cls(r) === "markup") tags.push('<span class="tag crit">наценка</span>');
+      if (r.product.fuel && cls(r) === "none") tags.push('<span class="tag warn">без скидки</span>');
+      const tr = document.createElement("tr");
+      tr.className = `row-in${r.storno ? " storno" : ""}`;
+      tr.style.setProperty("--i", firstRender ? i : i - 8);
+      tr.tabIndex = 0;
+      tr.setAttribute("aria-label", `Подробности транзакции ${r.t.toLocaleString("ru-RU")}, ${r.product.name}, ${rub2.format(r.sum)} рублей`);
+      tr.addEventListener("click", () => openTx(r));
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTx(r); } });
+      tr.innerHTML = `<td class="mono">${fmtDate(r.t)}<span class="tz">${utcLabel(r.azs.tz)}</span></td>
+        <td class="mono muted">${fmtMsk(r)}</td>
+        <td class="mono"><span class="card-no">••${r.card.last4}</span></td>
+        <td><div class="azs"><span class="azs-name">${r.azs.number} ${ownChip(r.own)}</span><span class="azs-addr">${r.azs.address}</span></div></td>
+        <td>${productLabel(r.product)}</td>
+        <td class="num">${r.product.fuel ? lit.format(r.qty) : "—"}</td><td class="num">${rub2.format(r.price)}</td>
+        <td class="num">${rub2.format(r.sum)}</td><td class="num ${r.discount < -0.004 ? "v-pos" : r.discount > 0.004 ? "v-neg" : "v-zero"}" title="${r.discount < -0.004 ? "скидка" : r.discount > 0.004 ? "наценка" : "без скидки"}">${signed(r.discount)}</td><td class="num v-zero">${rub2.format(r.fee)}</td><td>${tags.join(" ")}</td>`;
+      tbody.appendChild(tr);
+    });
+    $("tx-sample").title = ds.calibrateRub
+      ? "На DEMO нет пригодных транзакций: показан синтетический набор, откалиброванный по литрам и рублям договора"
+      : "На DEMO нет пригодных транзакций: синтетика откалибрована по литрам договора; рубли DEMO-договора неправдоподобны, цены взяты рыночные";
+  }
+
+  // Карта регионов. Границы: Natural Earth 1:50m (общественное достояние), adm0_a3 = RUS, проекция EPSG:32646,
+  // упрощение — scripts/build_regions_geo.py; названия совпадают со справочником Region API.
+  let geoMetric = "t";
+  let geoFuel = null;
+  let geoStats = new Map();
+  let azsStats = new Map();
+  let geoPoints = [];
+  let geoView = null;              // текущий масштаб и центр карты — сохраняются при смене месяца и фильтров
+  const GEO_ZOOM_DEFAULT = 1.3;
+  const GEO_ZOOM_MAX = 400;
+  const GEO_ANIM_MS = 300;
+  let geoNames = new Set();
+  let projectPoint = null;
+  // Та же коническая проекция Ламберта, что в scripts/build_regions_geo.py; параметры берутся из файла границ.
+  function makeProjection(pp) {
+    const rad = Math.PI / 180, tg = (phi) => Math.tan(Math.PI / 4 + phi / 2);
+    const phi1 = pp.lat1 * rad, phi2 = pp.lat2 * rad;
+    const n = Math.log(Math.cos(phi1) / Math.cos(phi2)) / Math.log(tg(phi2) / tg(phi1));
+    const f = Math.cos(phi1) * tg(phi1) ** n / n;
+    const rho0 = pp.radiusKm * f / tg(pp.latOrigin * rad) ** n;
+    return (lon, lat) => {
+      const l = lon < 0 ? lon + 360 : lon;
+      const rho = pp.radiusKm * f / tg(lat * rad) ** n;
+      const theta = n * (l - pp.lon0) * rad;
+      return [rho * Math.sin(theta), rho0 - rho * Math.cos(theta)];
+    };
+  }
+  // Версия в адресе сбрасывает кэш браузера при пересборке файла границ.
+  const GEO_FILE = "russia-regions.json?v=3";
+  const GEO_DEFAULT_PROJECTION = { radiusKm: 6371, lon0: 100, lat1: 50, lat2: 70, latOrigin: 60 };
+  const geoReady = fetch(GEO_FILE)
+    .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    .then(json => {
+      if (!window.echarts) return false;
+      echarts.registerMap("russia", json);
+      geoNames = new Set(json.features.map(f => f.properties.name));
+      projectPoint = makeProjection(json.projectionParams || GEO_DEFAULT_PROJECTION);
+      return true;
+    })
+    .catch(() => false);
+  function geoScale() {
+    const vals = [...geoStats.values()].map(s => s[geoMetric]);
+    if (geoMetric === "disc") {
+      const mx = Math.max(0.01, ...vals.map(Math.abs));
+      return { min: -mx, max: mx, value: (s) => s.disc, colors: ["#d43f5a", "#f3b5c0", css("--surface-2"), "#bfdbfe", "#1d4ed8"], lo: "+" + rate.format(mx) + "%", hi: "−" + rate.format(mx) + "%", title: "Скидка к цене на стеле: синий — скидка, красный — наценка" };
+    }
+    // Шкала начинается с заметного голубого: пустые регионы — нейтральный серо-голубой, их не спутать с малыми значениями.
+    const ramp = [css("--heat-2"), css("--heat-3"), css("--heat-5")];
+    if (geoMetric === "t") {
+      // Объёмы различаются в разы: цвет по корню из тонн, чтобы малые регионы не сливались.
+      const hi = Math.max(0.001, ...vals);
+      return { min: 0, max: Math.sqrt(hi), value: (s) => Math.sqrt(s.t), colors: ramp, lo: "0 т", hi: `${lit.format(hi)} т`, title: "Реализация, тонн" };
+    }
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    return { min: lo, max: hi > lo ? hi : lo + 1, value: (s) => s.price, colors: ramp, lo: `${rub2.format(lo)} ₽`, hi: `${rub2.format(hi)} ₽`, title: "Средняя цена литра по договору" };
+  }
+  function renderGeo(ds) {
+    const m = month("geo");
+    const rows = fuelRowsOf(ds, m.key);
+    const fuels = [...new Set(rows.map(r => r.product.name))];
+    const main = mainFuelOf(rows);
+    if (geoFuel === null || (geoFuel && !fuels.includes(geoFuel))) geoFuel = main;
+    $("geo-fuel").innerHTML = `<option value="">Все виды топлива</option>` + fuels.sort((a, b) => a.localeCompare(b, "ru")).map(f => `<option value="${f}">${f}${f === main ? " — основное" : ""}</option>`).join("");
+    $("geo-fuel").value = geoFuel;
+    geoStats = new Map();
+    rows.filter(r => !geoFuel || r.product.name === geoFuel).forEach(r => {
+      const s = geoStats.get(r.region) || { n: 0, l: 0, kg: 0, sum: 0, base: 0, disc: 0 };
+      s.n++; s.l += r.qty; s.kg += r.qty * r.product.density; s.sum += r.sum; s.base += r.sumNoDisc; s.disc += -r.discount;
+      geoStats.set(r.region, s);
+    });
+    geoStats.forEach(s => { s.t = s.kg / 1000; s.price = s.sum / s.l; s.pump = s.base / s.l; s.disc = s.disc / s.base * 100; });
+    azsStats = new Map();
+    rows.filter(r => !geoFuel || r.product.name === geoFuel).forEach(r => {
+      const s = azsStats.get(r.azs.number) || { station: r.azs, l: 0, n: 0 };
+      s.l += r.qty; s.n++;
+      azsStats.set(r.azs.number, s);
+    });
+    geoReady.then((ok) => paintGeo(ok, m));
+  }
+  function geoTooltip(name) {
+    const s = geoStats.get(name);
+    if (!s) return `<b>${name}</b><br><span style="color:${css("--ink-3")}">заправок нет</span>`;
+    const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:14px"><span style="color:${css("--ink-2")}">${k}</span><span style="font-family:JetBrains Mono,monospace">${v}</span></div>`;
+    return `<b>${name}</b>${row("Реализация", `${lit.format(s.t)} т · ${rub.format(s.l)} л`)}${row("Цена по договору", `${rub2.format(s.price)} ₽/л`)}${row("Цена на стеле", `${rub2.format(s.pump)} ₽/л`)}${row(s.disc >= 0 ? "Скидка" : "Наценка", discText(s.disc))}${row("Заправок", s.n)}`;
+  }
+  function paintGeo(mapOk, m) {
+    const sc = geoScale();
+    $("geo-legend").innerHTML = geoStats.size
+      ? `<span>${sc.title}</span><div class="bar" style="background:linear-gradient(90deg, ${sc.colors.join(", ")})"></div><div class="ends"><span>${sc.lo}</span><span>${sc.hi}</span></div>`
+      : `<span>Нет заправок по выбранному топливу</span>`;
+    const outside = [...geoStats.keys()].filter(k => mapOk && !geoNames.has(k));
+    $("geo-note").textContent = `${m.label} · реализация = Σ F_WEIGHT; цена — по договору, со скидкой${outside.length ? ` · нет на карте: ${outside.join(", ")}` : ""}${mapOk ? "" : " · файл границ не загрузился"}`;
+    const list = [...geoStats.entries()].sort((a, b) => b[1].t - a[1].t);
+    const swatch = (s) => { const k = (sc.value(s) - sc.min) / (sc.max - sc.min || 1); return sc.colors[Math.min(sc.colors.length - 1, Math.max(0, Math.round(k * (sc.colors.length - 1))))]; };
+    $("geo-body").innerHTML = list.length ? list.map(([name, s]) => `<tr data-region="${name}"><td><span class="geo-sw" style="background:${swatch(s)}"></span>${name}</td><td class="num">${lit.format(s.t)}</td><td class="num">${rub2.format(s.price)}</td><td class="num ${s.disc > 0.004 ? "v-pos" : s.disc < -0.004 ? "v-neg" : "v-zero"}">${discText(s.disc)}</td></tr>`).join("")
+      : `<tr><td colspan="4" class="empty">Нет данных</td></tr>`;
+    const ch = mapOk ? chart("geo") : null;
+    if (!ch) return;
+    // Точки АЗС: размер — литры договора на АЗС за месяц (по выбранному топливу), подпись — номер АЗС.
+    geoPoints = projectPoint ? [...azsStats.values()].map(s => ({ ...s, xy: projectPoint(s.station.lon, s.station.lat) })) : [];
+    ch.setOption({
+      ...anim,
+      animationDurationUpdate: reduceMotion ? 0 : GEO_ANIM_MS,
+      tooltip: { trigger: "item", confine: true, backgroundColor: css("--surface"), borderColor: css("--line"), textStyle: { color: css("--ink"), fontSize: 12 },
+        extraCssText: "border-radius:10px;box-shadow:0 8px 24px rgba(29,78,216,.18);min-width:200px",
+        formatter: (p) => p.seriesType !== "scatter" ? geoTooltip(p.name)
+          : p.data.members
+            ? `<b>${p.data.members.length} АЗС рядом</b><br><span style="color:${css("--ink-2")}">${p.data.members.map(s => esc(s.station.number)).join(", ")}</span><br>${rub.format(p.data.l)} л · ${p.data.n} заправок<br><span style="color:${css("--blue-700")}">нажмите — приблизить</span>`
+            : `<b>${esc(p.data.station.number)}</b> · ${esc(p.data.station.own)}<br><span style="color:${css("--ink-2")}">${esc(p.data.station.address)}</span><br>${rub.format(p.data.l)} л · ${p.data.n} заправок<br><span style="color:${css("--blue-700")}">нажмите — статистика АЗС</span>` },
+      visualMap: { show: false, type: "continuous", min: sc.min, max: sc.max, inRange: { color: sc.colors }, seriesIndex: 0 },
+      geo: {
+        // Масштаб до уровня улиц (единицы карты — км): АЗС в одном городе разделяются при приближении.
+        map: "russia", roam: true, aspectScale: 1, zoom: geoView?.zoom ?? GEO_ZOOM_DEFAULT, center: geoView?.center, scaleLimit: { min: 0.8, max: GEO_ZOOM_MAX },
+        layoutCenter: ["50%", "52%"], layoutSize: "100%", selectedMode: false,
+        itemStyle: { areaColor: css("--map-empty"), borderColor: css("--map-border"), borderWidth: 0.9 },
+        // Без areaColor ECharts подсвечивает регион жёлтым — задаём свой цвет подсветки.
+        emphasis: { label: { show: false }, itemStyle: { areaColor: css("--blue-200"), borderColor: css("--blue-700"), borderWidth: 1.6, shadowBlur: 8, shadowColor: "rgba(29,78,216,.35)" } },
+        label: { show: false },
+      },
+      series: [
+        { type: "map", geoIndex: 0, label: { show: false }, emphasis: { label: { show: false } }, data: [...geoStats.entries()].map(([name, s]) => ({ name, value: sc.value(s) })), animationDurationUpdate: GEO_ANIM_MS },
+        { type: "scatter", coordinateSystem: "geo", zlevel: 1, cursor: "pointer", data: [],
+          itemStyle: { color: css("--blue-700"), borderColor: "#ffffff", borderWidth: 1.5, shadowBlur: 6, shadowColor: "rgba(15,42,107,.35)" },
+          label: { show: true, position: "right", distance: 4, formatter: (p) => p.name.replace("АЗС ", "№"), color: css("--ink"), fontSize: 10.5, fontWeight: 600,
+            fontFamily: "JetBrains Mono, monospace", textBorderColor: css("--surface"), textBorderWidth: 3 },
+          labelLayout: { hideOverlap: true },
+          emphasis: { scale: 1.5, label: { show: true, fontSize: 12 }, itemStyle: { color: css("--sky") } },
+          animationDelay: (i) => 300 + i * 60 },
+      ],
+    }, true);
+    clusterPoints(ch);
+    if (!ch.__azsClick) {
+      ch.on("click", (p) => {
+        if (p.seriesType !== "scatter") return;
+        if (p.data.members) zoomToMembers(ch, p.data.members); else openAzs(p.data.station);
+      });
+      // Пересчёт групп — только после окончания движения: setOption посреди перетаскивания
+      // перезапускает анимацию карты, и регионы «застывают», пока точки уезжают.
+      ch.on("georoam", () => {
+        clearTimeout(ch.__roamTimer);
+        ch.__roamTimer = setTimeout(() => {
+          const g = ch.getOption().geo[0];
+          geoView = { zoom: g.zoom, center: g.center };
+          clusterPoints(ch);
+        }, 180);
+      });
+      ch.__azsClick = true;
+    }
+  }
+  // Группировка: АЗС ближе CLUSTER_PX пикселей на текущем масштабе объединяются в кружок с числом.
+  const CLUSTER_PX = 26;
+  function clusterPoints(ch) {
+    const maxL = Math.max(1, ...geoPoints.map(s => s.l));
+    const placed = geoPoints.map(s => ({ s, px: ch.convertToPixel({ geoIndex: 0 }, s.xy) })).sort((a, b) => b.s.l - a.s.l);
+    const used = new Set();
+    const data = [];
+    placed.forEach((a, i) => {
+      if (used.has(i) || !a.px) return;
+      const group = [a];
+      used.add(i);
+      placed.forEach((b, j) => {
+        if (used.has(j) || !b.px) return;
+        if (Math.hypot(a.px[0] - b.px[0], a.px[1] - b.px[1]) < CLUSTER_PX) { group.push(b); used.add(j); }
+      });
+      if (group.length === 1) {
+        const s = a.s;
+        data.push({ name: s.station.number, value: [...s.xy, s.l], station: s.station, l: s.l, n: s.n, symbolSize: 7 + 14 * Math.sqrt(s.l / maxL) });
+      } else {
+        const members = group.map(g => g.s);
+        const l = members.reduce((x, m) => x + m.l, 0), n = members.reduce((x, m) => x + m.n, 0);
+        const cx = members.reduce((x, m) => x + m.xy[0], 0) / members.length, cy = members.reduce((x, m) => x + m.xy[1], 0) / members.length;
+        data.push({ name: `${members.length} АЗС`, value: [cx, cy, l], members, l, n, symbolSize: 22 + Math.min(14, members.length * 2),
+          itemStyle: { color: css("--sky"), borderColor: "#ffffff", borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(15,42,107,.35)" },
+          label: { show: true, position: "inside", formatter: String(members.length), color: "#ffffff", fontSize: 12, fontWeight: 700, textBorderWidth: 0 } });
+      }
+    });
+    ch.setOption({ series: [{}, { data }] });
+  }
+  function zoomToMembers(ch, members) {
+    const g = ch.getOption().geo[0];
+    const xs = members.map(m => m.xy[0]), ys = members.map(m => m.xy[1]);
+    const center = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    geoView = { zoom: Math.min(GEO_ZOOM_MAX, (g.zoom || GEO_ZOOM_DEFAULT) * 3), center };
+    ch.setOption({ geo: { zoom: geoView.zoom, center } });
+    setTimeout(() => clusterPoints(ch), GEO_ANIM_MS + 50);
+  }
+  function zoomBy(k) {
+    const ch = charts.geo;
+    if (!ch) return;
+    const g = ch.getOption().geo[0];
+    geoView = { zoom: Math.min(GEO_ZOOM_MAX, Math.max(0.8, (g.zoom || GEO_ZOOM_DEFAULT) * k)), center: g.center };
+    ch.setOption({ geo: { zoom: geoView.zoom, center: geoView.center } });
+    setTimeout(() => clusterPoints(ch), GEO_ANIM_MS + 50);
+  }
+  $("geo-zoom-in").addEventListener("click", () => zoomBy(2));
+  $("geo-zoom-out").addEventListener("click", () => zoomBy(0.5));
+  $("geo-zoom-reset").addEventListener("click", () => { geoView = null; geoReady.then((ok) => paintGeo(ok, month("geo"))); });
+  $("geo-body").addEventListener("mouseover", (e) => {
+    const r = e.target.closest("tr[data-region]");
+    document.querySelectorAll(".geo-list tr.hl").forEach(x => x.classList.remove("hl"));
+    if (!r || !charts.geo) return;
+    r.classList.add("hl");
+    charts.geo.dispatchAction({ type: "downplay" });
+    charts.geo.dispatchAction({ type: "highlight", name: r.dataset.region });
+    charts.geo.dispatchAction({ type: "showTip", seriesIndex: 0, name: r.dataset.region });
+  });
+  $("geo-body").addEventListener("mouseleave", () => {
+    document.querySelectorAll(".geo-list tr.hl").forEach(x => x.classList.remove("hl"));
+    if (charts.geo) { charts.geo.dispatchAction({ type: "downplay" }); charts.geo.dispatchAction({ type: "hideTip" }); }
+  });
+  document.querySelectorAll("[data-geo]").forEach(b => b.addEventListener("click", () => {
+    geoMetric = b.dataset.geo;
+    document.querySelectorAll("[data-geo]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    geoReady.then((ok) => paintGeo(ok, month("geo")));
+  }));
+  // Карточка АЗС по клику на точку: всё топливо за выбранный месяц.
+  function openAzs(picked) {
+    // ECharts копирует объекты данных точек — станцию находим по номеру.
+    const st = stations.find(s => s.number === picked.number) || picked;
+    const m = month("geo");
+    const ds = datasetFor(current);
+    const all = fuelRowsOf(ds, m.key);
+    const rows = all.filter(r => r.azs.number === st.number);
+    const tot = totals(rows), totAll = totals(all);
+    const kg = rows.reduce((a, r) => a + r.qty * r.product.density, 0);
+    const hours = Array(24).fill(0); rows.forEach(r => hours[r.t.getHours()]++);
+    const peak = hours.indexOf(Math.max(...hours));
+    const last = rows.reduce((a, r) => (!a || r.utc > a.utc ? r : a), null);
+    const row = (k, v, extra = "") => `<div class="txd-row ${extra}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    const byFuel = new Map(); rows.forEach(r => { const f = byFuel.get(r.product) || []; f.push(r); byFuel.set(r.product, f); });
+    const scale = ds.priceScale[MONTHS[0].key] || 1;
+    const priceRows = products.filter(p => p.fuel).map(p => {
+      const raw = st.prices.find(x => x.name === p.name);
+      const dict = raw ? { ...raw, price: raw.price * scale } : null;
+      const fr = byFuel.get(p) || [];
+      const t = totals(fr);
+      const contract = t.l ? t.sum / t.l : null;
+      const withFee = t.l ? (t.sum + t.fee) / t.l : null;
+      if (!dict && !fr.length) return "";
+      const diff = dict && contract ? (contract / dict.price - 1) * 100 : null;
+      return `<tr><td>${productLabel(p)}</td>
+        <td class="num">${dict ? `${rub2.format(dict.price)}<span class="chk-comment">с ${new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - dict.daysAgo)).toLocaleDateString("ru-RU")}</span>` : "—"}</td>
+        <td class="num">${contract ? rub2.format(contract) : "—"}</td>
+        <td class="num ${diff === null ? "v-zero" : diff < -0.004 ? "v-pos" : diff > 0.004 ? "v-neg" : "v-zero"}">${diff === null ? "—" : `${diff > 0 ? "+" : diff < 0 ? "−" : ""}${rate.format(Math.abs(Math.round(diff * 100) / 100))}%`}</td>
+        <td class="num">${withFee ? rub2.format(withFee) : "—"}</td>
+        <td class="num">${t.l ? lit.format(t.l) : "—"}</td></tr>`;
+    }).join("");
+    const byCard = new Map(); rows.forEach(r => { const c = byCard.get(r.card) || { n: 0, l: 0, sum: 0, last: 0 }; c.n++; c.l += r.qty; c.sum += r.sum; c.last = Math.max(c.last, r.utc); byCard.set(r.card, c); });
+    const cardRows = [...byCard.entries()].sort((a, b) => b[1].l - a[1].l).map(([c, v]) =>
+      `<tr><td><span class="mono">••${c.last4}</span>${c.comment ? `<span class="chk-comment">${esc(c.comment)}</span>` : ""}</td><td class="num">${v.n}</td><td class="num">${lit.format(v.l)}</td><td class="num">${rub2.format(v.sum)}</td><td class="mono muted">${fmtZone(v.last, "Europe/Moscow")}</td></tr>`).join("");
+    $("azs-kind").textContent = `${st.own} · ${st.region}`;
+    $("azs-title").innerHTML = `${esc(st.number)} ${ownChip(st.own)}`;
+    $("azs-addr").textContent = st.address;
+    $("azs-body").innerHTML = `
+      <section class="txd-sec"><span class="subhead">Реализация договора · ${m.label.toLowerCase()}</span>
+        ${rows.length ? `
+        ${row("Заправлено", `${lit.format(tot.l)} л · ${lit.format(kg / 1000)} т`)}
+        ${row("Сумма по договору", `${rub2.format(tot.sum)} ₽`)}
+        ${row(tot.disc >= 0 ? "Скидка" : "Наценка", `<span class="${tot.disc >= 0 ? "v-pos" : "v-neg"}">${tot.disc >= 0 ? "−" : "+"}${rub2.format(Math.abs(tot.disc))} ₽ · ${discText(tot.base ? tot.disc / tot.base * 100 : 0)}</span>`)}
+        ${row("Сервисный сбор", `${rub2.format(tot.fee)} ₽`)}
+        ${row("Заправок", `${rows.length} · в среднем ${lit.format(tot.l / rows.length)} л`)}
+        ${row("Доля в объёме договора", `${lit.format(totAll.l ? tot.l / totAll.l * 100 : 0)}%`)}
+        ${row("Час пик", `${String(peak).padStart(2, "0")}:00–${String(peak).padStart(2, "0")}:59 · ${hours[peak]} заправок`)}
+        ${row("Последняя заправка", last ? `${fmtDate(last.t)} ${utcLabel(st.tz)} · ${fmtMsk(last)} МСК` : "—")}` : `<div class="empty">В этом месяце заправок договора на АЗС нет</div>`}
+      </section>
+      <section class="txd-sec"><span class="subhead">Цены, ₽/л</span>
+        ${st.prices.length || rows.length ? `<div class="table-scroll"><table class="chk-table azs-table"><thead><tr><th>Топливо</th><th class="num">На стеле</th><th class="num">По договору</th><th class="num">Разница</th><th class="num">Со сбором</th><th class="num">Литры</th></tr></thead><tbody>${priceRows}</tbody></table></div>` : ""}
+        ${st.prices.length ? "" : `<div class="hint">В справочнике АЗС цен для этой станции нет — показаны только цены договора.</div>`}
+      </section>
+      <section class="txd-sec"><span class="subhead">Карты · ${byCard.size}</span>
+        ${byCard.size ? `<div class="table-scroll"><table class="chk-table azs-table"><thead><tr><th>Карта и комментарий</th><th class="num">Заправок</th><th class="num">Литры</th><th class="num">Сумма, ₽</th><th>Последняя, МСК</th></tr></thead><tbody>${cardRows}</tbody></table></div>` : `<div class="hint">Карты договора здесь не заправлялись</div>`}
+      </section>
+      <section class="txd-sec"><span class="subhead">АЗС</span>
+        ${row("Тип", esc(st.own))}
+        ${row("Регион", esc(st.region))}
+        ${row("Координаты", `${st.lat.toFixed(4)}, ${st.lon.toFixed(4)}`)}
+        ${row("Часовой пояс", utcLabel(st.tz))}
+      </section>`;
+    $("azs-foot").innerHTML = `Цены — <span class="chip">get_azs_list_v1</span> (бесплатно) · координаты и номер — F_LATITUDE, F_LONGITUDE, AZS_NUMBER отчёта · <span class="badge-sample">пример данных</span>`;
+    $("azs-dialog").showModal();
+  }
+  $("azs-dialog").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $("geo-fuel").addEventListener("change", (e) => { geoFuel = e.target.value; renderBlock("geo"); });
+
+  // Расход по дням выбранного месяца.
+  let unit = "rub";
+  function renderDaily(ds) {
+    const ch = chart("daily");
+    if (!ch) return;
+    const m = month("daily");
+    const days = daysOf(m);
+    const index = new Map(days.map((d, i) => [dayKey(d), i]));
+    const shown = products.filter(p => unit === "rub" || p.fuel);
+    const series = shown.map(p => ({ p, data: days.map(() => 0) }));
+    rowsOf(ds, m.key).forEach(r => {
+      const i = index.get(dayKey(r.t));
+      const s = series.find(x => x.p === r.product);
+      if (i !== undefined && s) s.data[i] += unit === "rub" ? r.sum : r.qty;
+    });
+    const used = series.filter(s => s.data.some(v => v > 0));
+    const totalsByDay = days.map((_, i) => used.reduce((a, s) => a + s.data[i], 0));
+    const maxV = Math.max(0, ...totalsByDay);
+    const fmt = (v) => unit === "rub" ? `${rub.format(v)} ₽` : `${rub.format(v)} л`;
+    ch.setOption({ ...base(), ...emptyGraphic(maxV === 0, "Нет расхода в этом месяце"),
+      grid: { left: 8, right: 16, top: 34, bottom: 8, containLabel: true },
+      legend: { top: 0, left: 0, itemWidth: 10, itemHeight: 10, icon: "roundRect", textStyle: { color: css("--ink-2"), fontSize: 12 } },
+      tooltip: { ...base().tooltip, trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: css("--blue-100"), opacity: 0.45 } },
+        formatter: (items) => {
+          const list = items.filter(x => x.value > 0).sort((a, b) => b.value - a.value);
+          const total = list.reduce((a, x) => a + x.value, 0);
+          return `<b>${items[0].axisValue}</b> · ${fmt(Math.round(total))}<br>` + list.map(x => `${x.marker}${x.seriesName}: ${fmt(Math.round(x.value))} · ${lit.format(x.value / total * 100)}%`).join("<br>");
+        } },
+      xAxis: { type: "category", data: days.map(d => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })), ...axisCommon(), splitLine: { show: false } },
+      yAxis: { type: "value", ...axisCommon(), axisLabel: { color: css("--ink-3"), fontSize: 11, formatter: (v) => unit === "rub" && maxV >= 10000 ? `${v / 1000} тыс` : rub.format(v) } },
+      series: used.map((s, k) => ({
+        name: s.p.name, type: "bar", stack: "day", data: s.data.map(v => Math.round(v)), barMaxWidth: 18,
+        itemStyle: { color: fuelColor(s.p), borderColor: css("--surface"), borderWidth: 1, borderRadius: k === used.length - 1 ? [4, 4, 0, 0] : 0 },
+        emphasis: { focus: "series" }, animationDelay: (i) => i * 22 + k * 60,
+      })),
+    }, true);
+  }
+  const setUnit = (u) => { unit = u; $("u-rub").setAttribute("aria-pressed", String(u === "rub")); $("u-l").setAttribute("aria-pressed", String(u === "l")); renderBlock("daily"); };
+  $("u-rub").addEventListener("click", () => setUnit("rub"));
+  $("u-l").addEventListener("click", () => setUnit("l"));
+
+  function renderProducts(ds) {
+    const ch = chart("products");
+    if (!ch) return;
+    const byProduct = new Map();
+    rowsOf(ds, month("products").key).forEach(r => byProduct.set(r.product, (byProduct.get(r.product) || 0) + r.sum));
+    const list = [...byProduct.entries()].sort((a, b) => b[1] - a[1]);
+    const total = list.reduce((a, [, v]) => a + v, 0);
+    const short = total >= 1e6 ? `${lit.format(total / 1e6)} млн ₽` : total >= 1e3 ? `${rub.format(total / 1e3)} тыс ₽` : `${rub.format(total)} ₽`;
+    ch.setOption({ ...base(), ...emptyGraphic(!list.length, "Нет покупок в этом месяце"),
+      tooltip: { ...base().tooltip, trigger: "item", formatter: (p) => `${p.marker}<b>${p.name}</b><br>${rub.format(p.value)} ₽ · ${lit.format(p.percent)}%` },
+      legend: { orient: "vertical", right: 0, top: "middle", itemWidth: 10, itemHeight: 10, icon: "roundRect", textStyle: { color: css("--ink-2"), fontSize: 12 },
+        formatter: (name) => { const v = list.find(([p]) => p.name === name); return v ? `${name}  ${lit.format(v[1] / total * 100)}%` : name; } },
+      // Подпись в центре — компонент title с выравниванием по центру кольца (center у серии).
+      title: list.length ? { text: short, subtext: "за месяц", left: "33%", top: "middle", textAlign: "center", itemGap: 4,
+        textStyle: { color: css("--ink"), fontSize: 14, fontWeight: 600, fontFamily: "Unbounded, Onest, sans-serif" },
+        subtextStyle: { color: css("--ink-3"), fontSize: 12, fontFamily: "Onest, sans-serif" } } : { text: "" },
+      series: [{ type: "pie", radius: ["54%", "82%"], center: ["33%", "50%"], avoidLabelOverlap: true, padAngle: 1.5,
+        itemStyle: { borderColor: css("--surface"), borderWidth: 2, borderRadius: 5 },
+        // Процент на кольце; у долей меньше 5 % подписи нет — они видны в легенде.
+        label: { show: true, position: "inside", fontSize: 11, fontWeight: 600, fontFamily: "JetBrains Mono, monospace",
+          formatter: (p) => p.percent >= 5 ? `${Math.round(p.percent)}%` : "" },
+        labelLine: { show: false },
+        emphasis: { scale: true, scaleSize: 6 },
+        data: list.map(([p, v]) => { const color = fuelColor(p); return { name: p.name, value: Math.round(v), itemStyle: { color }, label: { color: inkOn(color) } }; }),
+        animationType: "scale", animationEasing: "cubicOut", animationDuration: 1000 }],
+    }, true);
+  }
+  function priceByFuel(ds, mk) {
+    return products.filter(p => p.fuel).map(p => {
+      const rows = rowsOf(ds, mk).filter(r => r.product === p);
+      const l = rows.reduce((a, r) => a + r.qty, 0);
+      return l ? { name: p.name, avg: rows.reduce((a, r) => a + r.sum, 0) / l, disc: rows.reduce((a, r) => a + r.discount, 0) / l } : null;
+    }).filter(Boolean);
+  }
+  function renderPrices(ds) {
+    const list = priceByFuel(ds, month("prices").key);
+    $("prices").innerHTML = list.length
+      ? list.map(p => `<div class="price-row"><span>${p.name}</span><span class="p" data-spark="price.${p.name}" tabindex="0" role="button" aria-expanded="false">${rub2.format(p.avg)} ₽/л</span><span class="d"${p.disc > 0 ? ' style="color:var(--markup)"' : ""}>${p.disc > 0 ? "наценка +" : "скидка −"}${rub2.format(Math.abs(p.disc))}</span></div>`).join("")
+      : `<div class="empty">Заправок в этом месяце нет</div>`;
+  }
+  function renderCards(ds) {
+    const ch = chart("cards");
+    if (!ch) return;
+    const byCard = new Map();
+    rowsOf(ds, month("cards").key).forEach(r => byCard.set(r.card, (byCard.get(r.card) || 0) + r.sum));
+    const top = [...byCard.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).reverse();
+    const clip = (s) => s.length > 24 ? `${s.slice(0, 23)}…` : s;
+    // Под номером карты — комментарий из get_cards_v2 (марка ТС, подразделение).
+    const labels = top.map(([c]) => c.comment ? `{num|••${c.last4}}\n{cmt|${clip(c.comment)}}` : `{num|••${c.last4}}`);
+    renderHBar(ch, labels, top.map(([, v]) => Math.round(v)), (v) => v >= 10000 ? `${rub.format(v / 1000)} тыс` : `${rub.format(v)} ₽`, 500, "Нет расхода по картам");
+    ch.setOption({
+      yAxis: { axisLabel: { lineHeight: 15, rich: {
+        num: { fontFamily: "JetBrains Mono, monospace", fontSize: 12, color: css("--ink"), align: "right" },
+        cmt: { fontSize: 10.5, color: css("--ink-3"), align: "right" },
+      } } },
+      tooltip: { formatter: (p) => { const c = top[p.dataIndex][0]; return `<b>••${c.last4}</b>${c.comment ? `<br>${esc(c.comment)}` : ""}<br>${rub.format(p.value)} ₽`; } },
+    });
+  }
+  // Пороги контроля настраиваются в блоке; события ищутся по моменту транзакции (utc), чтобы часовые пояса не мешали.
+  const cfg = { litres: 80, count: 3, hours: 4 };
+  function bigFills(rows) { return rows.filter(r => r.product.fuel && r.qty > cfg.litres).sort((a, b) => b.utc - a.utc); }
+  function rapidEvents(rows) {
+    const byCard = new Map();
+    rows.filter(r => r.product.fuel).forEach(r => { if (!byCard.has(r.card)) byCard.set(r.card, []); byCard.get(r.card).push(r); });
+    const events = [];
+    byCard.forEach(list => {
+      list.sort((a, b) => a.utc - b.utc);
+      let i = 0;
+      while (i < list.length) {
+        let j = i;
+        while (j + 1 < list.length && list[j + 1].utc - list[i].utc <= cfg.hours * 3600e3) j++;
+        if (j - i + 1 >= cfg.count) { events.push(list.slice(i, j + 1)); i = j + 1; } else i++;
+      }
+    });
+    return events.sort((a, b) => b[0].utc - a[0].utc);
+  }
+  const CHECKS = [
+    { key: "big", cls: "warn", label: () => `▲ больше ${cfg.litres} л за раз`, count: (rows) => bigFills(rows).length },
+    { key: "rapid", cls: "info", label: () => `⟳ ${cfg.count} заправки за ${cfg.hours} ч`, count: (rows) => rapidEvents(rows).length },
+  ];
+  function renderChecks(ds) {
+    const rows = rowsOf(ds, month("checks").key);
+    if (!$("checks").children.length) {
+      $("checks").innerHTML = CHECKS.map((c, i) => `<button type="button" class="check ${c.cls}" data-check="${i}"><span class="n">0</span><span class="l"></span></button>`).join("");
+    }
+    [...$("checks").querySelectorAll(".check")].forEach((el, i) => {
+      el.querySelector(".l").textContent = CHECKS[i].label();
+      countTo(el.querySelector(".n"), CHECKS[i].count(rows), { duration: 900, delay: i * 80 });
+      el.setAttribute("aria-label", `${CHECKS[i].label()}: показать подробности`);
+    });
+  }
+  function openCheck(i) {
+    const m = month("checks");
+    const rows = rowsOf(datasetFor(current), m.key);
+    const card = (r) => `<span class="mono">••${r.card.last4}</span>${r.card.comment ? `<span class="chk-comment">${esc(r.card.comment)}</span>` : ""}`;
+    const line = (r, idx) => `<tr data-idx="${idx}"><td>${card(r)}</td><td class="mono">${fmtDate(r.t)}<span class="tz">${utcLabel(r.azs.tz)}</span></td><td>${esc(r.azs.number)} ${ownChip(r.own)}<span class="chk-comment">${esc(r.azs.address)}</span></td><td>${productLabel(r.product)}</td><td class="num">${lit.format(r.qty)}</td><td class="num">${rub2.format(r.sum)}</td></tr>`;
+    const head = `<thead><tr><th>Карта и комментарий</th><th>Местное время АЗС</th><th>АЗС</th><th>Продукт</th><th class="num">Литры</th><th class="num">Сумма, ₽</th></tr></thead>`;
+    const flat = [];
+    let bodyRows = "";
+    if (CHECKS[i].key === "big") {
+      bigFills(rows).forEach(r => { bodyRows += line(r, flat.push(r) - 1); });
+    } else {
+      rapidEvents(rows).forEach(ev => {
+        const span = Math.round((ev[ev.length - 1].utc - ev[0].utc) / 60000);
+        const litres = ev.reduce((a, r) => a + r.qty, 0);
+        bodyRows += `<tr class="chk-group"><td colspan="6">Карта ••${ev[0].card.last4}${ev[0].card.comment ? ` · ${esc(ev[0].card.comment)}` : ""} · ${ev.length} заправки за ${Math.floor(span / 60)} ч ${span % 60} мин · ${lit.format(litres)} л</td></tr>`;
+        ev.forEach(r => { bodyRows += line(r, flat.push(r) - 1); });
+      });
+    }
+    $("chk-kind").textContent = `Контроль · ${m.label}`;
+    $("chk-title").textContent = `${CHECKS[i].label().replace(/^\S+\s/, "")} · ${CHECKS[i].count(rows)}`;
+    $("chk-body").innerHTML = flat.length
+      ? `<div class="table-scroll"><table class="chk-table">${head}<tbody>${bodyRows}</tbody></table></div>`
+      : `<div class="empty">В этом месяце таких случаев нет</div>`;
+    $("chk-foot").innerHTML = `Строка открывает транзакцию · комментарий карты — <span class="chip">get_cards_v2</span> · <span class="badge-sample">пример данных</span>`;
+    $("chk-body").onclick = (e) => { const tr = e.target.closest("tr[data-idx]"); if (tr) openTx(flat[Number(tr.dataset.idx)]); };
+    $("check-dialog").showModal();
+  }
+  $("checks").addEventListener("click", (e) => { const b = e.target.closest("button.check"); if (b) openCheck(Number(b.dataset.check)); });
+  $("check-dialog").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  [["cfg-litres", "litres"], ["cfg-count", "count"], ["cfg-hours", "hours"]].forEach(([id, key]) => {
+    $(id).addEventListener("change", (e) => {
+      const v = Number(e.target.value);
+      if (Number.isFinite(v) && v >= Number(e.target.min) && v <= Number(e.target.max)) cfg[key] = v; else e.target.value = cfg[key];
+      renderBlock("checks");
+    });
+  });
+  function renderHeat(ds) {
+    const ch = chart("heat");
+    if (!ch) return;
+    const counts = Array.from({ length: 7 }, () => Array(24).fill(0));
+    rowsOf(ds, month("heat").key).forEach(r => { counts[(r.t.getDay() + 6) % 7][r.t.getHours()]++; });
+    const heat = [];
+    counts.forEach((row, wd) => row.forEach((v, h) => heat.push([h, wd, v])));
+    ch.setOption({ ...base(),
+      grid: { left: 8, right: 8, top: 4, bottom: 48, containLabel: true },
+      tooltip: { ...base().tooltip, trigger: "item", formatter: (p) => `${weekdays[p.value[1]]}, ${String(p.value[0]).padStart(2, "0")}:00–${String(p.value[0]).padStart(2, "0")}:59<br><b>${p.value[2]}</b> заправок` },
+      xAxis: { type: "category", data: Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: css("--ink-3"), fontSize: 10 }, splitArea: { show: false } },
+      yAxis: { type: "category", data: weekdays, inverse: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: css("--ink-2"), fontSize: 11 } },
+      visualMap: { min: 0, max: Math.max(1, ...heat.map(x => x[2])), calculable: false, orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 160, text: ["больше", "меньше"], textStyle: { color: css("--ink-3"), fontSize: 11 },
+        inRange: { color: [css("--heat-0"), css("--heat-1"), css("--heat-2"), css("--heat-3"), css("--heat-4"), css("--heat-5")] } },
+      series: [{ type: "heatmap", data: heat, itemStyle: { borderColor: css("--surface"), borderWidth: 2, borderRadius: 4 },
+        emphasis: { itemStyle: { borderColor: css("--blue-700"), borderWidth: 2 } }, animationDelay: (i) => (i % 24) * 18 + Math.floor(i / 24) * 30 }],
+    }, true);
+  }
+
+  // ---------- реестр блоков и обновление только видимых ----------
+  const BLOCKS = {
+    consumption: renderConsumption, disc: renderDiscount, groups: renderGroups, tx: renderTx, geo: renderGeo, daily: renderDaily,
+    products: renderProducts, prices: renderPrices, cards: renderCards, checks: renderChecks, heat: renderHeat,
+  };
+  const blockEl = (key) => document.querySelector(`[data-block-el="${key}"]`);
+  const visible = new Set();
+  const stale = new Set(Object.keys(BLOCKS));
+  let dataVersion = 1;
+  const renderedVersion = {};
+  const updateVisStat = () => { $("vis-stat").textContent = `видно ${visible.size} из ${Object.keys(BLOCKS).length} · ждут показа ${stale.size}`; };
+  function renderBlock(key) {
+    if (!current) return;
+    const el = blockEl(key);
+    if (!visible.has(key)) { stale.add(key); el?.classList.add("stale"); return false; }
+    BLOCKS[key](datasetFor(current));
+    stale.delete(key);
+    renderedVersion[key] = dataVersion;
+    el?.classList.remove("stale");
+    if (charts[key]) charts[key].resize();
+    updateVisStat();
+    return true;
+  }
+  function renderVisible(keys = Object.keys(BLOCKS)) {
+    keys.forEach(k => renderBlock(k));
+    updateVisStat();
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      const key = e.target.dataset.blockEl;
+      if (e.isIntersecting) { visible.add(key); if (stale.has(key) || renderedVersion[key] !== dataVersion) renderBlock(key); }
+      else visible.delete(key);
+      updateVisStat();
+    });
+  }, { rootMargin: "200px 0px" });
+  Object.keys(BLOCKS).forEach(k => { const el = blockEl(k); if (el) io.observe(el); });
+
+  // Смена месяца перерисовывает видимые блоки, остальные — при прокрутке к ним.
+  const monthSelect = $("month-global");
+  monthSelect.innerHTML = MONTHS.map(m => `<option value="${m.key}">${m.label}${m.i === 0 ? " · текущий" : ""}</option>`).join("");
+  monthSelect.addEventListener("change", () => {
+    selectedMonth = monthSelect.value;
+    monthSelect.classList.toggle("past", selectedMonth !== MONTHS[0].key);
+    hideSpark();
+    Object.keys(BLOCKS).forEach(k => stale.add(k));
+    renderVisible();
+  });
+
+  // ---------- подсказка за 3 месяца ----------
+  // Значение показателя по месяцам: сервер отдаёт их из базы одним запросом /spark/{metric}.
+  const SPARK = {
+    payments: () => ({ title: "Платежи за месяц", values: MONTHS.map(m => monthKeyOf(new Date(current.lastPaymentDate)) === m.key ? current.lastPaymentSum : 0), fmt: (v) => `${rub.format(v)} ₽`, note: "из get_payments · в базе за 3 месяца" }),
+    rub: () => ({ title: "Израсходовано, ₽", values: MONTHS.map(m => monthSpend(current, datasetFor(current), m).rub), fmt: (v) => `${rub.format(v)} ₽`, note: "текущий — get_contract_data, прошлые — база", block: "consumption" }),
+    litres: () => ({ title: "Израсходовано, л", values: MONTHS.map(m => monthSpend(current, datasetFor(current), m).l), fmt: (v) => `${rub.format(v)} л`, note: "текущий — get_contract_data, прошлые — база", block: "consumption" }),
+    "disc.save": () => ({ title: "Сумма скидки", values: MONTHS.map(m => discTotals(datasetFor(current), m.key).disc), fmt: (v) => `${rub.format(v)} ₽`, note: "с учётом фильтров блока", block: "disc" }),
+    "disc.fee": () => ({ title: "Сервисный сбор", values: MONTHS.map(m => discTotals(datasetFor(current), m.key).fee), fmt: (v) => `${rub.format(v)} ₽`, note: "с учётом фильтров блока", block: "disc" }),
+    "disc.pct": () => ({ title: "Процент скидки", values: MONTHS.map(m => { const t = discTotals(datasetFor(current), m.key); return t.base ? t.disc / t.base * 100 : 0; }), fmt: (v) => `${rate.format(Math.round(v * 100) / 100)}%`, note: "с учётом фильтров блока", block: "disc" }),
+    "disc.final": () => ({ title: "Итоговая цена литра", values: MONTHS.map(m => { const t = discTotals(datasetFor(current), m.key); return t.l ? (t.sum + t.fee) / t.l : 0; }), fmt: (v) => `${rub2.format(v)} ₽`, note: "со скидкой и сбором, с учётом фильтров", block: "disc", zoom: true }),
+  };
+  function sparkFor(key) {
+    if (SPARK[key]) return SPARK[key]();
+    if (key.startsWith("price.")) {
+      const fuel = key.slice(6);
+      return { title: `Цена литра · ${fuel}`, values: MONTHS.map(m => priceByFuel(datasetFor(current), m.key).find(p => p.name === fuel)?.avg ?? 0), fmt: (v) => `${rub2.format(v)} ₽`, note: "по договору, со скидкой", block: "prices", zoom: true };
+    }
+    if (key.startsWith("check.")) {
+      const ch = CHECKS[Number(key.slice(6))];
+      return { title: ch.label().replace(/^\S+\s/, ""), values: MONTHS.map(m => ch.count(rowsOf(datasetFor(current), m.key))), fmt: (v) => rub.format(v), note: "число случаев за месяц при текущих порогах", block: "checks" };
+    }
+    return null;
+  }
+  function sparkSvg(spec) {
+    const vals = [...spec.values].reverse(); // старый → новый
+    const months = [...MONTHS].reverse();
+    const sel = selectedMonth;
+    const W = 226, H = 96, top = 18, bottom = 18, barW = 46, gap = (W - barW * 3) / 4;
+    const lo = spec.zoom ? Math.min(...vals.filter(v => v > 0)) * 0.97 || 0 : Math.min(0, ...vals);
+    const hi = Math.max(...vals, lo + 1e-9);
+    const y = (v) => top + (H - top - bottom) * (1 - (v - lo) / (hi - lo || 1));
+    const zeroY = y(Math.max(lo, 0));
+    return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">
+      <defs><linearGradient id="spg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${css("--bar-a")}"/><stop offset="1" stop-color="${css("--bar-b")}"/></linearGradient></defs>
+      <line x1="0" x2="${W}" y1="${zeroY}" y2="${zeroY}" stroke="${css("--line")}" stroke-width="1"/>
+      ${vals.map((v, i) => {
+        const x = gap + i * (barW + gap);
+        const yy = Math.min(y(v), zeroY), h = Math.max(2, Math.abs(zeroY - y(v)));
+        const isSel = months[i].key === sel;
+        return `<rect x="${x}" y="${yy}" width="${barW}" height="${h}" rx="5" fill="${v < 0 ? css("--markup") : "url(#spg)"}" opacity="${isSel ? 1 : 0.45}"/>
+          <text x="${x + barW / 2}" y="${Math.max(11, yy - 4)}" text-anchor="middle" font-size="10" font-family="JetBrains Mono, monospace" fill="${css("--ink")}">${esc(spec.fmt(v))}</text>
+          <text x="${x + barW / 2}" y="${H - 4}" text-anchor="middle" font-size="10" fill="${isSel ? css("--blue-700") : css("--ink-3")}" font-weight="${isSel ? 700 : 400}">${months[i].short}</text>`;
+      }).join("")}
+    </svg>`;
+  }
+  // График за 3 месяца открывается по клику (Enter или пробел с клавиатуры) и закрывается повторным
+  // кликом, кликом мимо или Esc. Подсказки при наведении отключены.
+  const pop = $("spark-pop");
+  let sparkAnchor = null;
+  function showSpark(el) {
+    if (!current) return;
+    const spec = sparkFor(el.dataset.spark);
+    if (!spec) return;
+    hideSpark();
+    sparkAnchor = el;
+    el.setAttribute("aria-expanded", "true");
+    pop.innerHTML = `<div class="t">${esc(spec.title)} · 3 месяца</div>${sparkSvg(spec)}<div class="n">${esc(spec.note)} · Esc — закрыть</div>`;
+    pop.hidden = false;
+    const r = el.getBoundingClientRect();
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - 125), window.innerWidth - 258);
+    const below = r.bottom + 8 + pop.offsetHeight < window.innerHeight;
+    pop.style.left = `${left}px`;
+    pop.style.top = `${below ? r.bottom + 8 : r.top - pop.offsetHeight - 8}px`;
+  }
+  function hideSpark() {
+    pop.hidden = true;
+    sparkAnchor?.setAttribute("aria-expanded", "false");
+    sparkAnchor = null;
+  }
+  const toggleSpark = (el) => (sparkAnchor === el ? hideSpark() : showSpark(el));
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-spark]");
+    if (el) { toggleSpark(el); return; }
+    if (!pop.contains(e.target)) hideSpark();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sparkAnchor) { const el = sparkAnchor; hideSpark(); el.focus(); return; }
+    const el = e.target.closest?.("[data-spark]");
+    if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleSpark(el); }
+  });
+  document.addEventListener("scroll", hideSpark, { passive: true });
+  window.addEventListener("resize", hideSpark);
+
+  // ---------- шапка договора ----------
+  function renderHeader(c) {
+    const d0 = firstRender ? 250 : 0;
+    $("contract-num").textContent = c.number;
+    countTo($("kpi-balance"), c.balance, { delay: d0 });
+    countTo($("kpi-payment"), c.lastPaymentSum, { delay: d0 + 120 });
+    $("kpi-payment-date").textContent = new Date(c.lastPaymentDate).toLocaleDateString("ru-RU");
+  }
+  // Запросы к API: DEMO не тарифицируется и статистику не отдаёт — показан расчёт по расписанию сервера.
+  const DEMO_PER_DAY = 2880 + 3;            // get_contract_data раз в 30 с + справочники раз в сутки
+  const PROD_BILLED_PER_DAY = 24 + 24 + 2;  // get_contract_data и get_transactions_v2 раз в час, отчёт раз в сутки
+  const FREE_PACKAGE = 500;
+  function renderApi() {
+    const monthStart = MONTHS[0].start;
+    const elapsed = Math.max(0.01, (now - monthStart) / 86400000);
+    const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+    countTo($("api-total"), Math.round(DEMO_PER_DAY * elapsed), { delay: firstRender ? 400 : 0 });
+    $("api-billed").textContent = "0 · DEMO";
+    $("api-left").textContent = `остаток ${FREE_PACKAGE} из ${FREE_PACKAGE}`;
+    const prodMonth = PROD_BILLED_PER_DAY * daysInMonth;
+    const prodSoFar = Math.round(PROD_BILLED_PER_DAY * elapsed);
+    $("api-prod").textContent = `≈ ${rub.format(prodMonth)} в месяц`;
+    const runOut = new Date(monthStart.getTime() + FREE_PACKAGE / PROD_BILLED_PER_DAY * 86400000);
+    $("api-prod-note").textContent = prodMonth <= FREE_PACKAGE
+      ? `${PROD_BILLED_PER_DAY} тарифицируемых в сутки — пакета хватит на месяц`
+      : `${PROD_BILLED_PER_DAY} тарифицируемых в сутки: пакет 500 закончится ${runOut.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}, сейчас было бы ${rub.format(prodSoFar)}. Чтобы уложиться, опрашивайте договор раз в 2 часа и берите транзакции из суточного отчёта.`;
+    const used = 0;
+    const bar = $("api-bar");
+    bar.classList.toggle("over", used >= FREE_PACKAGE);
+    requestAnimationFrame(() => { bar.style.width = `${Math.max(1, Math.min(100, (FREE_PACKAGE - used) / FREE_PACKAGE * 100))}%`; });
+  }
+  function renderContract(c) {
+    renderApi();
+    // Блок групп скрыт у договоров без групп; видимость ставим сразу, иначе наблюдатель его не увидит.
+    blockEl("groups").hidden = !hasGroups(datasetFor(c));
+    dataVersion++;
+    renderHeader(c);
+    Object.keys(BLOCKS).forEach(k => stale.add(k));
+    renderVisible();
+    firstRender = false;
+  }
+  window.addEventListener("resize", () => Object.values(charts).forEach(ch => ch.resize()));
+  const rethemeCharts = () => { Object.keys(CHART_IDS).forEach(k => { if (charts[k]) stale.add(k); }); renderVisible(Object.keys(CHART_IDS)); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rethemeCharts);
+  new MutationObserver(rethemeCharts).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  // ---------- меню договоров ----------
+  const btn = $("contract-btn");
+  const menu = $("contract-menu");
+  let activeIndex = 0;
+  const STORAGE_KEY = "fuel-dashboard:contract";
+  function readSaved() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } }
+  function save(key) { try { localStorage.setItem(STORAGE_KEY, key); } catch { /* хранилище недоступно */ } }
+  menu.innerHTML = `<li class="menu-title" role="presentation">Договоры учётной записи · ${CONTRACTS.length}</li>` + CONTRACTS.map((c, i) => {
+    const state = c.balance < 0 ? "neg" : c.monthL === 0 ? "zero" : "";
+    const sub = c.balance < 0 ? "баланс ниже нуля" : c.monthL === 0 ? "нет расхода в этом месяце" : `${rub.format(c.monthL)} л в этом месяце`;
+    return `<li class="contract-option" role="option" id="opt-${c.key}" data-key="${c.key}" data-index="${i}" aria-selected="false">
+      <span class="o-dot ${state}"></span><span class="o-num">${c.number}</span><span class="o-bal">${rub.format(c.balance)} ₽</span>
+      <span class="o-sub">${sub}</span></li>`;
+  }).join("");
+  const options = () => [...menu.querySelectorAll(".contract-option")];
+  if (CONTRACTS.length < 2) { btn.querySelector("svg").remove(); btn.disabled = true; }
+  function setActive(i) {
+    activeIndex = (i + CONTRACTS.length) % CONTRACTS.length;
+    options().forEach((o, k) => o.classList.toggle("active", k === activeIndex));
+    menu.setAttribute("aria-activedescendant", `opt-${CONTRACTS[activeIndex].key}`);
+  }
+  function openMenu() { menu.hidden = false; btn.setAttribute("aria-expanded", "true"); setActive(CONTRACTS.indexOf(current)); menu.focus(); }
+  function closeMenu(focusButton = true) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); if (focusButton) btn.focus(); }
+  btn.addEventListener("click", () => (menu.hidden ? openMenu() : closeMenu()));
+  menu.addEventListener("click", (e) => { const o = e.target.closest(".contract-option"); if (o) { closeMenu(); selectContract(o.dataset.key); } });
+  menu.addEventListener("mousemove", (e) => { const o = e.target.closest(".contract-option"); if (o) setActive(Number(o.dataset.index)); });
+  menu.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setActive(activeIndex + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
+    else if (e.key === "Home") { e.preventDefault(); setActive(0); }
+    else if (e.key === "End") { e.preventDefault(); setActive(CONTRACTS.length - 1); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); closeMenu(); selectContract(CONTRACTS[activeIndex].key); }
+    else if (e.key === "Escape" || e.key === "Tab") { closeMenu(e.key === "Escape"); }
+  });
+  document.addEventListener("click", (e) => { if (!menu.hidden && !e.target.closest(".contract")) closeMenu(false); });
+
+  const wrap = document.querySelector(".wrap");
+  let loadToken = 0;
+  function selectContract(key) {
+    const c = CONTRACTS.find(x => x.key === key) || CONTRACTS[0];
+    if (current && c.key === current.key) return;
+    current = c;
+    save(c.key);
+    options().forEach(o => o.setAttribute("aria-selected", String(o.dataset.key === c.key)));
+    $("contract-num").textContent = c.number;
+    if (firstRender) { renderContract(c); markUpdated(true); return; }
+    const token = ++loadToken;
+    wrap.classList.add("loading");
+    wrap.setAttribute("aria-busy", "true");
+    setTimeout(() => {
+      if (token !== loadToken) return;
+      wrap.classList.remove("loading");
+      wrap.removeAttribute("aria-busy");
+      renderContract(c);
+      markUpdated(false);
+      left = PERIOD;
+    }, reduceMotion ? 150 : 650);
+  }
+
+  // ---------- опрос раз в 10 с: только видимые блоки, пауза в скрытой вкладке ----------
+  const PERIOD = 10;
+  let left = PERIOD;
+  const bar = $("cd-bar");
+  const hero = $("hero");
+  const circ = 37.7;
+  function markUpdated(first) {
+    $("updated-at").textContent = new Date().toLocaleTimeString("ru-RU");
+    const dot = $("live-dot");
+    dot.classList.remove("pulse"); void dot.offsetWidth; dot.classList.add("pulse");
+    if (!first) { hero.classList.remove("shine"); void hero.offsetWidth; hero.classList.add("shine"); }
+  }
+  // Реальный клиент: GET /api/contracts/{key}/version (ETag). Новая версия снимка → перерисовать видимые
+  // блоки, остальные пометить устаревшими; без изменений сервер отвечает 304 и ничего не перерисовывается.
+  function poll() {
+    const serverVersion = dataVersion; // на DEMO данные не меняются
+    if (serverVersion !== dataVersion) {
+      dataVersion = serverVersion;
+      renderHeader(current);
+      Object.keys(BLOCKS).forEach(k => stale.add(k));
+      renderVisible();
+    }
+    updateVisStat();
+    markUpdated(false);
+  }
+  setInterval(() => {
+    if (document.hidden || !current) return;
+    left -= 1;
+    if (left <= 0) { left = PERIOD; poll(); }
+    $("next-in").textContent = left;
+    bar.style.strokeDashoffset = String(circ * (1 - left / PERIOD));
+  }, 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && current) { left = PERIOD; poll(); } });
+
+  selectContract(readSaved() || CONTRACTS[0].key);
+})();
+</script>
