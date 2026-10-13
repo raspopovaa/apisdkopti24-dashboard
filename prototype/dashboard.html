@@ -410,6 +410,10 @@ button.check:focus-visible { outline: 2px solid var(--blue-500); outline-offset:
   background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
 #grp-filter.on, #grp-fuel.on { border-color: var(--blue-500); background-color: var(--blue-50); }
 .grp-table { min-width: 680px; font-size: 0.88rem; }
+/* Групп бывает несколько десятков: таблица прокручивается, шапка и итог остаются на месте. */
+[data-block-el="groups"] .table-scroll { max-height: 460px; overflow-y: auto; }
+.grp-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.grp-table tfoot td { position: sticky; bottom: 0; z-index: 1; background: linear-gradient(var(--surface-2), var(--surface-2)) var(--surface); }
 .grp-table tbody tr { cursor: pointer; }
 .grp-table tbody tr:focus-visible { outline: 2px solid var(--blue-500); outline-offset: -2px; }
 .grp-name { font-weight: 600; }
@@ -469,7 +473,7 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
         </div>
       </div>
       <div class="status" aria-live="polite">
-        <span class="pill env">DEMO</span>
+        <span class="pill env" id="env-pill">DEMO</span>
         <span class="pill"><span class="dot" id="live-dot"></span>обновлено <span class="mono" id="updated-at">—</span></span>
         <span class="pill" title="Браузер запрашивает снимок у сервера раз в 10 секунд">
           <svg class="countdown" viewBox="0 0 16 16" aria-hidden="true"><circle class="track" cx="8" cy="8" r="6"/><circle class="bar" id="cd-bar" cx="8" cy="8" r="6" stroke-dasharray="37.7" stroke-dashoffset="0"/></svg>
@@ -486,8 +490,8 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
       <article class="kpi rise" style="--d:2">
         <div class="kpi-label">Последний платёж</div>
         <div class="kpi-value" data-spark="payments" tabindex="0" role="button" aria-expanded="false"><span id="kpi-payment">0</span><small>₽</small></div>
-        <div class="kpi-sub">Поступил <span class="mono" id="kpi-payment-date">—</span></div>
-        <div class="source">из <span class="chip">get_contract_data</span> · last_payment_sum</div>
+        <div class="kpi-sub" id="kpi-payment-sub">Поступил <span class="mono" id="kpi-payment-date">—</span></div>
+        <div class="source" id="kpi-payment-src">из <span class="chip">get_contract_data</span> · last_payment_sum</div>
       </article>
       <article class="kpi rise" style="--d:3" data-block-el="consumption">
         <div class="kpi-label kpi-label-row"><span id="kpi-month-label">Израсходовано</span></div>
@@ -913,7 +917,156 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
       if (rows.length > 20) [3, 17].forEach(k => { rows[k].storno = true; });
       byMonth.set(m.key, rows);
     });
-    return { byMonth, feeRates, litres, calibrateRub, priceScale, cards, groupNames };
+    return { byMonth, feeRates, litres, calibrateRub, priceScale, cards, groupNames, products, stations };
+  }
+  // ---------- синтетический договор по профилю (scripts/build_synthetic_profile.py) ----------
+  // Профиль — только агрегаты транзакционного отчёта: доли товаров, распределения литров, цены стелы по месяцам,
+  // скидки по типам АЗС, часы, дни недели, доли субъектов; АЗС — из справочника API (get_azs_list_v1).
+  // Реквизиты договора, баланс, платежи, карты, группы и комментарии придуманы.
+  const PROFILE_FILE = "synthetic-profile.json?v=3";
+  const PROFILE_SCALE = 0.5;   // половина объёма исходного клиента: ~90–140 транзакций в день
+  const SYNTH_GROUPS = [
+    { name: "Колонна Новосибирск", region: "Новосибирская область", models: ["Volvo FH 460", "Scania R450", "КамАЗ 54901"] },
+    { name: "Колонна Кемерово", region: "Кемеровская область", models: ["КамАЗ 54901", "Shacman X3000", "Sitrak C7H"] },
+    { name: "Колонна Омск", region: "Омская область", models: ["MAN TGX 18.480", "DAF XF 480", "КамАЗ 5490"] },
+    { name: "Магистраль Восток", east: true, models: ["Volvo FH 500", "Scania S500", "Sitrak C7H"] },
+    { name: "Магистраль Запад", models: ["MAN TGX 18.510", "Mercedes Actros", "КамАЗ 54901"] },
+    { name: "Самосвалы", models: ["КамАЗ 65115", "Howo T5G", "Shacman X3000 самосвал"] },
+    { name: "Спецтехника", models: ["Автокран Ивановец", "Экскаватор JCB 3CX", "Погрузчик Lonking"] },
+    { name: "Городская доставка", models: ["ГАЗель Next", "Hyundai HD78", "Isuzu ELF"] },
+    { name: "Легковые службы", petrol: true, models: ["Lada Vesta", "Kia Rio", "Lada Largus", "Haval Jolion"] },
+  ];
+  // Условия синтетического договора (придуманы): скидка 3 % на бензины и 7 % на ДТ, на партнёрских АЗС
+  // скидки нет, на АЗС Дальневосточного федерального округа — наценка 5 % на всё топливо.
+  const FAR_EAST = new Set(["Республика Бурятия", "Забайкальский край", "Республика Саха (Якутия)", "Амурская область",
+    "Еврейская автономная область", "Приморский край", "Хабаровский край", "Сахалинская область", "Магаданская область",
+    "Камчатский край", "Чукотский автономный округ"]);
+  const SYNTH_TERMS = { petrol: 0.03, diesel: 0.07, partner: 0, farEast: -0.05 };
+  const synthDiscount = (g, azs) => {
+    if (!g.fuel) return 0;
+    if (FAR_EAST.has(azs.region)) return SYNTH_TERMS.farEast;
+    if (azs.own === "Партнёры") return SYNTH_TERMS.partner;
+    if (/ДТ/.test(g.name)) return SYNTH_TERMS.diesel;
+    return /АИ|^G-(9|D)/.test(g.name) ? SYNTH_TERMS.petrol : 0;   // СУГ — без скидки
+  };
+  const fromQuantiles = (q, u) => {
+    const x = u * (q.length - 1), i = Math.floor(x);
+    return i >= q.length - 1 ? q[q.length - 1] : q[i] + (q[i + 1] - q[i]) * (x - i);
+  };
+  function buildProfileDataset(prof) {
+    const rnd = mulberry32(20261013);
+    const weighted = (entries) => {
+      const total = entries.reduce((a, [, w]) => a + w, 0);
+      return () => { let x = rnd() * total; for (const [v, w] of entries) { x -= w; if (x < 0) return v; } return entries[entries.length - 1][0]; };
+    };
+    const goods = prof.goods.map(g => ({ name: g.name, code: g.code, color: g.color || null, fuel: g.fuel,
+      density: g.fuel ? (/ДТ/.test(g.name) ? 0.84 : /СУГ/.test(g.name) ? 0.54 : 0.745) : 0, src: g }));
+    const st = prof.stations.map(x => ({ ...x, name: `${x.number} · ${x.region}`, tz: tzOffset(x.tz) }));
+    const ownCount = new Map(); st.forEach(x => ownCount.set(x.own, (ownCount.get(x.own) || 0) + 1));
+    const stationWeight = (x) => (prof.own[x.own]?.litreShare ?? 0.01) / ownCount.get(x.own);
+    const byRegion = new Map(); st.forEach(x => { const l = byRegion.get(x.region) || []; l.push(x); byRegion.set(x.region, l); });
+    const pickRegion = weighted(Object.entries(prof.regions).filter(([k]) => byRegion.has(k)).map(([k, v]) => [k, v.share]));
+    const pickInRegion = new Map([...byRegion].map(([k, list]) => [k, weighted(list.map(x => [x, stationWeight(x)]))]));
+    const pickStation = () => pickInRegion.get(pickRegion())();
+    const fuelGoods = goods.filter(g => g.fuel);
+    // Основное топливо карты — по доле транзакций: доля литров перекосила бы парк в сторону ДТ.
+    const pickMainFuel = weighted(fuelGoods.map(g => [g, g.src.txShare]));
+    const pickAnyGoods = weighted(goods.map(g => [g, g.src.txShare]));
+
+    // Карты: активность — из распределения «транзакций на карту», домашний субъект и любимые АЗС — по профилю.
+    const used4 = new Set();
+    const cards = Array.from({ length: Math.round(prof.cards.count * PROFILE_SCALE) }, (_, id) => {
+      let last4; do { last4 = String(1000 + Math.floor(rnd() * 9000)); } while (used4.has(last4)); used4.add(last4);
+      const home = pickRegion();
+      const main = pickMainFuel();
+      const petrol = !/ДТ|СУГ/.test(main.name);
+      const homeStations = Array.from({ length: Math.max(1, Math.round(prof.cards.stationsPerCard)) }, () => pickInRegion.get(home)());
+      const homeLon = byRegion.get(home)[0].lon;
+      const group = petrol ? SYNTH_GROUPS[8]
+        : SYNTH_GROUPS.find(g => g.region === home && rnd() < 0.75)
+        || (rnd() < 0.55 ? (homeLon > 90 ? SYNTH_GROUPS[3] : SYNTH_GROUPS[4]) : SYNTH_GROUPS[5 + Math.floor(rnd() * 3)]);
+      const model = group.models[Math.floor(rnd() * group.models.length)];
+      return { id, last4, comment: `${model} · борт ${100 + Math.floor(rnd() * 900)}`, group: group.name,
+        activity: fromQuantiles(prof.cards.txPerCard, rnd()), home, main, homeStations };
+    });
+    const pickCard = weighted(cards.map(card => [card, card.activity]));
+    const wdMean = prof.weekday.reduce((a, b) => a + b, 0) / 7;
+    const pickHour = weighted(prof.hour.map((w, h) => [h, w]));
+    const pumpFor = (g, i) => {
+      const byOffset = g.src.pumpByMonthOffset;
+      const keys = Object.keys(byOffset).map(Number).sort((a, b) => Math.abs(a - i) - Math.abs(b - i));
+      return byOffset[String(keys[0])];
+    };
+    const byMonth = new Map();
+    MONTHS.forEach(m => {
+      const rows = [];
+      for (const d of daysOf(m)) {
+        const wd = (d.getDay() + 6) % 7;
+        const n = Math.round((prof.txPerDayByMonthOffset?.[m.i] ?? prof.txPerDay) * PROFILE_SCALE * prof.weekday[wd] / wdMean * (0.9 + rnd() * 0.2));
+        for (let k = 0; k < n; k++) {
+          const card = pickCard();
+          const g = rnd() < 0.97 ? card.main : pickAnyGoods();
+          const azs = rnd() < prof.cards.homeRegionShare * 0.9 ? card.homeStations[Math.floor(rnd() * card.homeStations.length)] : pickStation();
+          const t = new Date(d); t.setHours(pickHour(), Math.floor(rnd() * 60), Math.floor(rnd() * 60));
+          if (t > now) continue;
+          const disc = synthDiscount(g, azs);
+          // Цена стелы: если у АЗС есть цена в справочнике — от неё (с поправкой на месяц), иначе медиана товара × индекс субъекта.
+          const dict = azs.prices.find(x => x.name === g.name);
+          const base = dict ? dict.price * pumpFor(g, m.i) / pumpFor(g, 0) : pumpFor(g, m.i) * (g.fuel ? prof.regions[azs.region]?.priceIndex ?? 1 : 1);
+          const pump = Math.round(base * (g.fuel && !dict ? 0.99 + rnd() * 0.02 : 1) * 100) / 100;
+          const client = Math.round(pump * (1 - disc) * 100) / 100;
+          let qty = Math.round(fromQuantiles(g.src.qty, rnd()) * 100) / 100;
+          const storno = rnd() < prof.returnShare;
+          if (storno) qty = -Math.round(qty * (0.1 + rnd() * 0.6) * 100) / 100;
+          const sumNoDisc = Math.round(qty * pump * 100) / 100, sum = Math.round(qty * client * 100) / 100;
+          const utc = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours(), t.getMinutes(), t.getSeconds()) - tzMinutes(azs.tz) * 60000;
+          rows.push({ id: String(41000000000 + Math.floor(rnd() * 900000000)), t, utc, card, station: azs.name, azs, own: azs.own, region: azs.region,
+            product: g, qty, price: client, priceNoDisc: pump, sum, sumNoDisc, discount: sum - sumNoDisc, fee: 0, storno });
+        }
+      }
+      byMonth.set(m.key, rows.sort((a, b) => b.utc - a.utc));
+    });
+    // Сервисный сбор — по таблице № 3 оферты от объёма прошлого месяца (для самого раннего — от своего).
+    const litres = MONTHS.map(m => totals(byMonth.get(m.key)).l);
+    const feeRates = MONTHS.map((m, i) => tierFor(litres[i + 1] ?? litres[i]).fee / 100);
+    MONTHS.forEach((m, i) => byMonth.get(m.key).forEach(r => { r.fee = Math.round(r.sum * feeRates[i] * 100) / 100; }));
+    return { byMonth, feeRates, litres, calibrateRub: true, priceScale: Object.fromEntries(MONTHS.map(m => [m.key, 1])),
+      cards, groupNames: SYNTH_GROUPS.map(g => g.name), products: goods, stations: st, synthetic: true, meta: prof.meta };
+  }
+  // Платежи синтетического договора: предоплата раз в неделю, сумма — под недельный расход.
+  function synthPayments(ds) {
+    const weekly = ds.litres[1] * 81 / 4.3;
+    const out = [];
+    for (let d = new Date(today.getTime() - 3 * 86400000); d >= MONTHS[2].start; d = new Date(d.getTime() - 7 * 86400000)) {
+      out.push({ date: d.toISOString().slice(0, 10), sum: Math.round(weekly * (0.85 + ((d.getDate() * 37) % 30) / 100) / 10000) * 10000 });
+    }
+    return out;
+  }
+
+  // Реальный транзакционный отчёт ЛК (scripts/import_transactions_csv.py): файл real-transactions.json кладётся
+  // рядом со страницей только в локальном превью; в опубликованный прототип и в git он не попадает.
+  const REAL_FILE = "real-transactions.json";
+  const tzOffset = (h) => `${h < 0 ? "-" : "+"}${String(Math.abs(h)).padStart(2, "0")}:00`;
+  function buildRealDataset(src) {
+    const goods = src.goods.map(g => ({ name: g.name, code: g.code, color: g.color || null, density: g.density ?? 0, fuel: g.fuel }));
+    const realStations = src.stations.map(s => ({ ...s, name: `${s.number} · ${s.region}`, tz: tzOffset(s.tz), prices: [] }));
+    const cards = src.cards.map((card, i) => ({ id: i, last4: card.last4, comment: card.comment, group: card.group }));
+    const byMonth = new Map(MONTHS.map(m => [m.key, []]));
+    for (const [local, utc, ci, si, gi, qty, pump, client, sumNoDisc, disc, fee, type, id] of src.tx) {
+      const t = new Date(local);
+      const rows = byMonth.get(monthKeyOf(t));
+      if (!rows) continue;
+      const st = realStations[si];
+      // «Сумма скидки» в отчёте: плюс — скидка, минус — наценка; discount в дашборде — наоборот.
+      rows.push({ id, t, utc, card: cards[ci], station: st.name, azs: st, own: st.own, region: st.region, product: goods[gi],
+        qty, price: client, priceNoDisc: pump, sum: sumNoDisc - disc, sumNoDisc, discount: -disc, fee, storno: type !== "Покупка" });
+    }
+    byMonth.forEach(rows => rows.sort((a, b) => b.utc - a.utc));
+    const feeRates = MONTHS.map(m => { const t = totals(byMonth.get(m.key)); return t.sum ? t.fee / t.sum : src.meta.feeRate; });
+    const litres = MONTHS.map(m => totals(byMonth.get(m.key)).l);
+    const groupNames = [...new Set(cards.map(card => card.group).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru"));
+    return { byMonth, feeRates, litres, calibrateRub: true, priceScale: Object.fromEntries(MONTHS.map(m => [m.key, 1])),
+      cards, groupNames, products: goods, stations: realStations, real: true, meta: src.meta };
   }
   const datasets = new Map();
   const datasetFor = (c) => { if (!datasets.has(c.key)) datasets.set(c.key, buildDataset(c)); return datasets.get(c.key); };
@@ -929,7 +1082,7 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
   }
   // Расход месяца: текущий — из get_contract_data, прошлые — из транзакций в базе.
   function monthSpend(c, ds, m) {
-    if (m.i === 0) return { rub: c.monthRub, l: c.monthL, source: "get_contract_data" };
+    if (m.i === 0 && !c.fromRows) return { rub: c.monthRub, l: c.monthL, source: "get_contract_data" };
     const t = totals(rowsOf(ds, m.key));
     return { rub: t.sum, l: t.l, source: "db" };
   }
@@ -964,14 +1117,15 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
     const n = parseInt(m[1], 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255));
     return lum > 160 ? "#0b1b3d" : "#ffffff";
   };
-  const fuelColor = (p) => p.name === "ДТ" ? css("--fuel-dt") : p.color || css("--fuel-other");
+  // Чёрный цвет справочника у всех видов ДТ заменяется токеном, видимым и в тёмной теме.
+  const fuelColor = (p) => p.name === "ДТ" || p.color?.toUpperCase() === "#231F20" ? css("--fuel-dt") : p.color || css("--fuel-other");
   const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
   const productLabel = (p) => p.color
     ? `<span class="prod"><span class="prod-dot" style="background:${p.color}" aria-hidden="true"></span>${esc(p.name)}</span>`
     : `<span class="prod">${esc(p.name)}</span>`;
   const ownChip = (own) => {
-    const k = own === "Газпромнефть" ? "gpn" : own === "Партнёры" ? "partner" : "";
-    const label = own === "Франчайзинг Газпромнефть" ? "франчайзинг" : own === "Газпромнефть" ? "сеть" : "партнёр";
+    const k = own === "Газпромнефть" || own === "ОПТИ 24" ? "gpn" : own === "Партнёры" ? "partner" : "";
+    const label = own.startsWith("Франчайзинг") ? "франчайзинг" : own === "Газпромнефть" || own === "ОПТИ 24" ? "сеть" : "партнёр";
     return `<span class="own-chip ${k}" title="${esc(own)}">${label}</span>`;
   };
   const discText = (v) => `${v > 0.004 ? "−" : v < -0.004 ? "+" : ""}${rate.format(Math.abs(Math.round(v * 100) / 100))}%`;
@@ -1427,13 +1581,18 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
       tr.innerHTML = `<td class="mono">${fmtDate(r.t)}<span class="tz">${utcLabel(r.azs.tz)}</span></td>
         <td class="mono muted">${fmtMsk(r)}</td>
         <td class="mono"><span class="card-no">••${r.card.last4}</span></td>
-        <td><div class="azs"><span class="azs-name">${r.azs.number} ${ownChip(r.own)}</span><span class="azs-addr">${r.azs.address}</span></div></td>
+        <td><div class="azs"><span class="azs-name">${r.azs.number} ${ownChip(r.own)}</span><span class="azs-addr">${esc(r.azs.address)}</span></div></td>
         <td>${productLabel(r.product)}</td>
         <td class="num">${r.product.fuel ? lit.format(r.qty) : "—"}</td><td class="num">${rub2.format(r.price)}</td>
         <td class="num">${rub2.format(r.sum)}</td><td class="num ${r.discount < -0.004 ? "v-pos" : r.discount > 0.004 ? "v-neg" : "v-zero"}" title="${r.discount < -0.004 ? "скидка" : r.discount > 0.004 ? "наценка" : "без скидки"}">${signed(r.discount)}</td><td class="num v-zero">${rub2.format(r.fee)}</td><td>${tags.join(" ")}</td>`;
       tbody.appendChild(tr);
     });
-    $("tx-sample").title = ds.calibrateRub
+    $("tx-sample").textContent = ds.real ? "реальные данные" : ds.synthetic ? "синтетика по профилю" : "пример данных";
+    $("tx-sample").title = ds.synthetic
+      ? `Синтетический договор: транзакции сгенерированы по агрегатам транзакционного отчёта (${ds.meta.periodDays} дней), АЗС — из справочника API; реквизиты, баланс, платежи, карты и группы придуманы`
+      : ds.real
+      ? `${ds.meta.source}: ${rub.format(ds.meta.rows)} транзакций за ${ds.meta.from} — ${ds.meta.to}; файл есть только в локальном превью`
+      : ds.calibrateRub
       ? "На DEMO нет пригодных транзакций: показан синтетический набор, откалиброванный по литрам и рублям договора"
       : "На DEMO нет пригодных транзакций: синтетика откалибрована по литрам договора; рубли DEMO-договора неправдоподобны, цены взяты рыночные";
   }
@@ -1478,11 +1637,13 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
       return true;
     })
     .catch(() => false);
+  // Цена и скидка — оценочные метрики: зелёный — выгодно, красный — дорого или наценка, жёлтый — середина.
+  const GEO_GOOD_BAD = ["#16a34a", "#84cc16", "#facc15", "#f97316", "#dc2626"];
   function geoScale() {
     const vals = [...geoStats.values()].map(s => s[geoMetric]);
     if (geoMetric === "disc") {
       const mx = Math.max(0.01, ...vals.map(Math.abs));
-      return { min: -mx, max: mx, value: (s) => s.disc, colors: ["#d43f5a", "#f3b5c0", css("--surface-2"), "#bfdbfe", "#1d4ed8"], lo: "+" + rate.format(mx) + "%", hi: "−" + rate.format(mx) + "%", title: "Скидка к цене на стеле: синий — скидка, красный — наценка" };
+      return { min: -mx, max: mx, value: (s) => s.disc, colors: [...GEO_GOOD_BAD].reverse(), lo: "+" + rate.format(mx) + "%", hi: "−" + rate.format(mx) + "%", title: "Скидка к цене на стеле: зелёный — скидка, красный — наценка" };
     }
     // Шкала начинается с заметного голубого: пустые регионы — нейтральный серо-голубой, их не спутать с малыми значениями.
     const ramp = [css("--heat-2"), css("--heat-3"), css("--heat-5")];
@@ -1492,7 +1653,7 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
       return { min: 0, max: Math.sqrt(hi), value: (s) => Math.sqrt(s.t), colors: ramp, lo: "0 т", hi: `${lit.format(hi)} т`, title: "Реализация, тонн" };
     }
     const lo = Math.min(...vals), hi = Math.max(...vals);
-    return { min: lo, max: hi > lo ? hi : lo + 1, value: (s) => s.price, colors: ramp, lo: `${rub2.format(lo)} ₽`, hi: `${rub2.format(hi)} ₽`, title: "Средняя цена литра по договору" };
+    return { min: lo, max: hi > lo ? hi : lo + 1, value: (s) => s.price, colors: GEO_GOOD_BAD, lo: `${rub2.format(lo)} ₽`, hi: `${rub2.format(hi)} ₽`, title: "Средняя цена литра по договору: зелёный — дешевле, красный — дороже" };
   }
   function renderGeo(ds) {
     const m = month("geo");
@@ -1537,7 +1698,7 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
     const ch = mapOk ? chart("geo") : null;
     if (!ch) return;
     // Точки АЗС: размер — литры договора на АЗС за месяц (по выбранному топливу), подпись — номер АЗС.
-    geoPoints = projectPoint ? [...azsStats.values()].map(s => ({ ...s, xy: projectPoint(s.station.lon, s.station.lat) })) : [];
+    geoPoints = projectPoint ? [...azsStats.values()].filter(s => s.station.lat != null).map(s => ({ ...s, xy: projectPoint(s.station.lon, s.station.lat) })) : [];
     ch.setOption({
       ...anim,
       animationDurationUpdate: reduceMotion ? 0 : GEO_ANIM_MS,
@@ -1656,9 +1817,9 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
   // Карточка АЗС по клику на точку: всё топливо за выбранный месяц.
   function openAzs(picked) {
     // ECharts копирует объекты данных точек — станцию находим по номеру.
-    const st = stations.find(s => s.number === picked.number) || picked;
-    const m = month("geo");
     const ds = datasetFor(current);
+    const st = ds.stations.find(s => s.number === picked.number) || picked;
+    const m = month("geo");
     const all = fuelRowsOf(ds, m.key);
     const rows = all.filter(r => r.azs.number === st.number);
     const tot = totals(rows), totAll = totals(all);
@@ -1669,17 +1830,18 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
     const row = (k, v, extra = "") => `<div class="txd-row ${extra}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
     const byFuel = new Map(); rows.forEach(r => { const f = byFuel.get(r.product) || []; f.push(r); byFuel.set(r.product, f); });
     const scale = ds.priceScale[MONTHS[0].key] || 1;
-    const priceRows = products.filter(p => p.fuel).map(p => {
+    const priceRows = ds.products.filter(p => p.fuel).map(p => {
       const raw = st.prices.find(x => x.name === p.name);
-      const dict = raw ? { ...raw, price: raw.price * scale } : null;
       const fr = byFuel.get(p) || [];
       const t = totals(fr);
+      // Без цен справочника берём «Цену стелы» из чеков договора на этой АЗС.
+      const dict = raw ? { ...raw, price: raw.price * scale } : t.l ? { price: t.base / t.l, fromTx: true } : null;
       const contract = t.l ? t.sum / t.l : null;
       const withFee = t.l ? (t.sum + t.fee) / t.l : null;
       if (!dict && !fr.length) return "";
       const diff = dict && contract ? (contract / dict.price - 1) * 100 : null;
       return `<tr><td>${productLabel(p)}</td>
-        <td class="num">${dict ? `${rub2.format(dict.price)}<span class="chk-comment">с ${new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - dict.daysAgo)).toLocaleDateString("ru-RU")}</span>` : "—"}</td>
+        <td class="num">${dict ? `${rub2.format(dict.price)}<span class="chk-comment">${dict.fromTx ? "по чекам" : dict.dateFrom ? `с ${new Date(dict.dateFrom).toLocaleDateString("ru-RU")}` : `с ${new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - dict.daysAgo)).toLocaleDateString("ru-RU")}`}</span>` : "—"}</td>
         <td class="num">${contract ? rub2.format(contract) : "—"}</td>
         <td class="num ${diff === null ? "v-zero" : diff < -0.004 ? "v-pos" : diff > 0.004 ? "v-neg" : "v-zero"}">${diff === null ? "—" : `${diff > 0 ? "+" : diff < 0 ? "−" : ""}${rate.format(Math.abs(Math.round(diff * 100) / 100))}%`}</td>
         <td class="num">${withFee ? rub2.format(withFee) : "—"}</td>
@@ -1713,7 +1875,7 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
       <section class="txd-sec"><span class="subhead">АЗС</span>
         ${row("Тип", esc(st.own))}
         ${row("Регион", esc(st.region))}
-        ${row("Координаты", `${st.lat.toFixed(4)}, ${st.lon.toFixed(4)}`)}
+        ${row("Координаты", st.lat != null ? `${st.lat.toFixed(4)}, ${st.lon.toFixed(4)}` : "—")}
         ${row("Часовой пояс", utcLabel(st.tz))}
       </section>`;
     $("azs-foot").innerHTML = `Цены — <span class="chip">get_azs_list_v1</span> (бесплатно) · координаты и номер — F_LATITUDE, F_LONGITUDE, AZS_NUMBER отчёта · <span class="badge-sample">пример данных</span>`;
@@ -1724,17 +1886,29 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
 
   // Расход по дням выбранного месяца.
   let unit = "rub";
+  // Расход по дням и структура — по видам нефтепродуктов: марки и сорта (G-95, ДТ Зимнее, …) входят в свой вид,
+  // нетопливные позиции — в «Товары и услуги». Цвет вида — из справочника Goods.
+  const PRODUCT_KINDS = [
+    { name: "АИ-92", match: /92/, color: "#fbbc17", fuel: true },
+    { name: "АИ-95", match: /95/, color: "#e63026", fuel: true },
+    { name: "АИ-98/100", match: /98|100/, color: "#868585", fuel: true },
+    { name: "ДТ", match: /ДТ|дизел/i, color: null, fuel: true },
+    { name: "СУГ", match: /СУГ|газ|пропан/i, color: "#009cde", fuel: true },
+  ];
+  const SERVICES_KIND = { name: "Товары и услуги", color: null, fuel: false };
+  const OTHER_FUEL_KIND = { name: "Другое топливо", color: null, fuel: true };
+  const kindOf = (p) => !p.fuel ? SERVICES_KIND : PRODUCT_KINDS.find(k => k.match.test(p.name)) || OTHER_FUEL_KIND;
   function renderDaily(ds) {
     const ch = chart("daily");
     if (!ch) return;
     const m = month("daily");
     const days = daysOf(m);
     const index = new Map(days.map((d, i) => [dayKey(d), i]));
-    const shown = products.filter(p => unit === "rub" || p.fuel);
-    const series = shown.map(p => ({ p, data: days.map(() => 0) }));
+    const kinds = [...PRODUCT_KINDS, OTHER_FUEL_KIND, SERVICES_KIND].filter(k => unit === "rub" || k.fuel);
+    const series = kinds.map(p => ({ p, data: days.map(() => 0) }));
     rowsOf(ds, m.key).forEach(r => {
       const i = index.get(dayKey(r.t));
-      const s = series.find(x => x.p === r.product);
+      const s = series.find(x => x.p === kindOf(r.product));
       if (i !== undefined && s) s.data[i] += unit === "rub" ? r.sum : r.qty;
     });
     const used = series.filter(s => s.data.some(v => v > 0));
@@ -1767,23 +1941,27 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
     const ch = chart("products");
     if (!ch) return;
     const byProduct = new Map();
-    rowsOf(ds, month("products").key).forEach(r => byProduct.set(r.product, (byProduct.get(r.product) || 0) + r.sum));
+    rowsOf(ds, month("products").key).forEach(r => { const k = kindOf(r.product); byProduct.set(k, (byProduct.get(k) || 0) + r.sum); });
     const list = [...byProduct.entries()].sort((a, b) => b[1] - a[1]);
     const total = list.reduce((a, [, v]) => a + v, 0);
+    // В узкой колонке легенда уходит под кольцо, иначе подписи перекрывают его.
+    const narrow = ch.getWidth() < 380;
+    const cx = narrow ? "50%" : "33%", cy = narrow ? "38%" : "50%";
+    const pct = (v) => { const x = v / total * 100; return x > 0 && x < 0.1 ? "<0,1%" : `${lit.format(x)}%`; };
     const short = total >= 1e6 ? `${lit.format(total / 1e6)} млн ₽` : total >= 1e3 ? `${rub.format(total / 1e3)} тыс ₽` : `${rub.format(total)} ₽`;
     ch.setOption({ ...base(), ...emptyGraphic(!list.length, "Нет покупок в этом месяце"),
       tooltip: { ...base().tooltip, trigger: "item", formatter: (p) => `${p.marker}<b>${p.name}</b><br>${rub.format(p.value)} ₽ · ${lit.format(p.percent)}%` },
-      legend: { orient: "vertical", right: 0, top: "middle", itemWidth: 10, itemHeight: 10, icon: "roundRect", textStyle: { color: css("--ink-2"), fontSize: 12 },
-        formatter: (name) => { const v = list.find(([p]) => p.name === name); return v ? `${name}  ${lit.format(v[1] / total * 100)}%` : name; } },
+      legend: { ...(narrow ? { orient: "horizontal", left: "center", bottom: 0, itemGap: 10 } : { orient: "vertical", right: 0, top: "middle" }), itemWidth: 10, itemHeight: 10, icon: "roundRect", textStyle: { color: css("--ink-2"), fontSize: 12 },
+        formatter: (name) => { const v = list.find(([p]) => p.name === name); return v ? `${name}  ${pct(v[1])}` : name; } },
       // Подпись в центре — компонент title с выравниванием по центру кольца (center у серии).
-      title: list.length ? { text: short, subtext: "за месяц", left: "33%", top: "middle", textAlign: "center", itemGap: 4,
+      title: list.length ? { text: short, subtext: "за месяц", left: cx, top: cy, textVerticalAlign: "middle", textAlign: "center", itemGap: 4,
         textStyle: { color: css("--ink"), fontSize: 14, fontWeight: 600, fontFamily: "Unbounded, Onest, sans-serif" },
         subtextStyle: { color: css("--ink-3"), fontSize: 12, fontFamily: "Onest, sans-serif" } } : { text: "" },
-      series: [{ type: "pie", radius: ["54%", "82%"], center: ["33%", "50%"], avoidLabelOverlap: true, padAngle: 1.5,
+      series: [{ type: "pie", radius: narrow ? ["42%", "64%"] : ["54%", "82%"], center: [cx, cy], avoidLabelOverlap: true, padAngle: 1.5,
         itemStyle: { borderColor: css("--surface"), borderWidth: 2, borderRadius: 5 },
         // Процент на кольце; у долей меньше 5 % подписи нет — они видны в легенде.
         label: { show: true, position: "inside", fontSize: 11, fontWeight: 600, fontFamily: "JetBrains Mono, monospace",
-          formatter: (p) => p.percent >= 5 ? `${Math.round(p.percent)}%` : "" },
+          formatter: (p) => !narrow && p.percent >= 5 ? `${Math.round(p.percent)}%` : "" },
         labelLine: { show: false },
         emphasis: { scale: true, scaleSize: 6 },
         data: list.map(([p, v]) => { const color = fuelColor(p); return { name: p.name, value: Math.round(v), itemStyle: { color }, label: { color: inkOn(color) } }; }),
@@ -1791,7 +1969,7 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
     }, true);
   }
   function priceByFuel(ds, mk) {
-    return products.filter(p => p.fuel).map(p => {
+    return ds.products.filter(p => p.fuel).map(p => {
       const rows = rowsOf(ds, mk).filter(r => r.product === p);
       const l = rows.reduce((a, r) => a + r.qty, 0);
       return l ? { name: p.name, avg: rows.reduce((a, r) => a + r.sum, 0) / l, disc: rows.reduce((a, r) => a + r.discount, 0) / l } : null;
@@ -1960,7 +2138,9 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
   // ---------- подсказка за 3 месяца ----------
   // Значение показателя по месяцам: сервер отдаёт их из базы одним запросом /spark/{metric}.
   const SPARK = {
-    payments: () => ({ title: "Платежи за месяц", values: MONTHS.map(m => monthKeyOf(new Date(current.lastPaymentDate)) === m.key ? current.lastPaymentSum : 0), fmt: (v) => `${rub.format(v)} ₽`, note: "из get_payments · в базе за 3 месяца" }),
+    payments: () => ({ title: "Платежи за месяц", values: MONTHS.map(m => current.payments
+      ? current.payments.filter(x => monthKeyOf(new Date(x.date)) === m.key).reduce((a, x) => a + x.sum, 0)
+      : monthKeyOf(new Date(current.lastPaymentDate)) === m.key ? current.lastPaymentSum : 0), fmt: (v) => `${rub.format(v)} ₽`, note: "из get_payments · в базе за 3 месяца" }),
     rub: () => ({ title: "Израсходовано, ₽", values: MONTHS.map(m => monthSpend(current, datasetFor(current), m).rub), fmt: (v) => `${rub.format(v)} ₽`, note: "текущий — get_contract_data, прошлые — база", block: "consumption" }),
     litres: () => ({ title: "Израсходовано, л", values: MONTHS.map(m => monthSpend(current, datasetFor(current), m).l), fmt: (v) => `${rub.format(v)} л`, note: "текущий — get_contract_data, прошлые — база", block: "consumption" }),
     "disc.save": () => ({ title: "Сумма скидки", values: MONTHS.map(m => discTotals(datasetFor(current), m.key).disc), fmt: (v) => `${rub.format(v)} ₽`, note: "с учётом фильтров блока", block: "disc" }),
@@ -2044,9 +2224,18 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
   function renderHeader(c) {
     const d0 = firstRender ? 250 : 0;
     $("contract-num").textContent = c.number;
-    countTo($("kpi-balance"), c.balance, { delay: d0 });
-    countTo($("kpi-payment"), c.lastPaymentSum, { delay: d0 + 120 });
-    $("kpi-payment-date").textContent = new Date(c.lastPaymentDate).toLocaleDateString("ru-RU");
+    // Баланса и платежей в транзакционном отчёте нет: у реального договора вместо них прочерк.
+    const value = (id, v, delay) => {
+      const el = $(id);
+      el.nextElementSibling.hidden = v === null;
+      if (v === null) { shown.delete(el); el.textContent = "—"; } else countTo(el, v, { delay });
+    };
+    value("kpi-balance", c.balance, d0);
+    value("kpi-payment", c.lastPaymentSum, d0 + 120);
+    $("kpi-payment-sub").firstChild.textContent = c.lastPaymentDate ? "Поступил " : "";
+    $("kpi-payment-date").textContent = c.lastPaymentDate ? new Date(c.lastPaymentDate).toLocaleDateString("ru-RU") : "нет в транзакционном отчёте";
+    $("kpi-payment-src").hidden = !!(c.real || c.synthetic);
+    $("env-pill").textContent = c.real ? "отчёт ЛК" : c.synthetic ? "синтетика" : "DEMO";
   }
   // Запросы к API: DEMO не тарифицируется и статистику не отдаёт — показан расчёт по расписанию сервера.
   const DEMO_PER_DAY = 2880 + 3;            // get_contract_data раз в 30 с + справочники раз в сутки
@@ -2093,15 +2282,16 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
   const STORAGE_KEY = "fuel-dashboard:contract";
   function readSaved() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } }
   function save(key) { try { localStorage.setItem(STORAGE_KEY, key); } catch { /* хранилище недоступно */ } }
-  menu.innerHTML = `<li class="menu-title" role="presentation">Договоры учётной записи · ${CONTRACTS.length}</li>` + CONTRACTS.map((c, i) => {
+  const buildMenu = () => { menu.innerHTML = `<li class="menu-title" role="presentation">Договоры учётной записи · ${CONTRACTS.length}</li>` + CONTRACTS.map((c, i) => {
     const state = c.balance < 0 ? "neg" : c.monthL === 0 ? "zero" : "";
-    const sub = c.balance < 0 ? "баланс ниже нуля" : c.monthL === 0 ? "нет расхода в этом месяце" : `${rub.format(c.monthL)} л в этом месяце`;
+    const sub = c.synthetic ? `синтетика по профилю · ${rub.format(c.monthL)} л в этом месяце` : c.real ? `реальный отчёт · ${rub.format(c.monthL)} л в этом месяце` : c.balance < 0 ? "баланс ниже нуля" : c.monthL === 0 ? "нет расхода в этом месяце" : `${rub.format(c.monthL)} л в этом месяце`;
     return `<li class="contract-option" role="option" id="opt-${c.key}" data-key="${c.key}" data-index="${i}" aria-selected="false">
-      <span class="o-dot ${state}"></span><span class="o-num">${c.number}</span><span class="o-bal">${rub.format(c.balance)} ₽</span>
+      <span class="o-dot ${state}"></span><span class="o-num">${c.number}</span><span class="o-bal">${c.balance === null ? "—" : `${rub.format(c.balance)} ₽`}</span>
       <span class="o-sub">${sub}</span></li>`;
-  }).join("");
+  }).join(""); };
+  buildMenu();
   const options = () => [...menu.querySelectorAll(".contract-option")];
-  if (CONTRACTS.length < 2) { btn.querySelector("svg").remove(); btn.disabled = true; }
+  if (CONTRACTS.length < 2) { btn.querySelector("svg")?.remove(); btn.disabled = true; }
   function setActive(i) {
     activeIndex = (i + CONTRACTS.length) % CONTRACTS.length;
     options().forEach((o, k) => o.classList.toggle("active", k === activeIndex));
@@ -2179,6 +2369,38 @@ tbody tr.row-in { animation: row-in 0.6s var(--ease) both; animation-delay: calc
   }, 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && current) { left = PERIOD; poll(); } });
 
-  selectContract(readSaved() || CONTRACTS[0].key);
+  async function loadRealContract() {
+    try {
+      const resp = await fetch(REAL_FILE, { cache: "no-store" });
+      if (!resp.ok) return;
+      const ds = buildRealDataset(await resp.json());
+      const c = { key: "real", number: "Реальный договор", real: true, fromRows: true, balance: null, available: null, lastPaymentSum: null, lastPaymentDate: null,
+        monthL: ds.litres[0], prevMonthL: ds.litres[1] };
+      datasets.set(c.key, ds);
+      CONTRACTS.push(c);
+      buildMenu();
+    } catch (err) {
+      console.info("Реальные транзакции не загружены:", err.message);
+    }
+  }
+  async function loadSyntheticContract() {
+    try {
+      const resp = await fetch(PROFILE_FILE);
+      if (!resp.ok) return;
+      const ds = buildProfileDataset(await resp.json());
+      const payments = synthPayments(ds);
+      const spent = totals(rowsOf(ds, MONTHS[0].key)).sum + totals(rowsOf(ds, MONTHS[0].key)).fee;
+      const balance = Math.round((payments.filter(x => monthKeyOf(new Date(x.date)) === MONTHS[0].key).reduce((a, x) => a + x.sum, 0) - spent + 2_400_000) * 100) / 100;
+      // Номер, баланс и платежи придуманы: в рабочем дашборде они пришли бы из auth_user, get_contract_data и get_payments.
+      const c = { key: "s1", number: "СН-000201", synthetic: true, fromRows: true, balance, available: balance,
+        lastPaymentSum: payments[0].sum, lastPaymentDate: payments[0].date, payments, monthL: ds.litres[0], prevMonthL: ds.litres[1] };
+      datasets.set(c.key, ds);
+      CONTRACTS.push(c);
+      buildMenu();
+    } catch (err) {
+      console.info("Профиль синтетического договора не загружен:", err.message);
+    }
+  }
+  Promise.allSettled([loadSyntheticContract(), loadRealContract()]).then(() => selectContract(readSaved() || CONTRACTS[0].key));
 })();
 </script>
