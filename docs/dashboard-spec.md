@@ -469,6 +469,10 @@ API ОПТИ 24 ── SDK apisdkopti24 (1 запрос/с) ── сервер 
   («Volvo FH 500 · борт 159»), 9 групп карт (колонны, магистрали, самосвалы, спецтехника,
   доставка, легковые).
 
+Публикация: GitHub Pages (`.github/workflows/pages.yml`) —
+https://raspopovaa.github.io/apisdkopti24-dashboard/; в сборку входят страница, границы регионов
+и профиль, реальных данных там нет.
+
 Локальный запуск: `python scripts/serve_prototype.py` → http://127.0.0.1:8765/. Скрипт
 отдаёт страницу, границы регионов и профиль; при наличии `data/real/transactions.json`
 (готовит `scripts/import_transactions_csv.py`, папка `data/` исключена из git) в меню

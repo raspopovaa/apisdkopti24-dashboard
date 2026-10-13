@@ -1,0 +1,54 @@
+# Публикация прототипа дашборда на GitHub Pages: https://raspopovaa.github.io/apisdkopti24-dashboard/
+# Страница статическая: DEMO-договоры встроены, синтетический договор строится из профиля;
+# к API она не обращается, ключей и секретов в сборке нет.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "prototype/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Собрать сайт
+        run: |
+          mkdir -p site
+          {
+            printf '<!doctype html>\n<meta charset="utf-8">\n'
+            printf '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+            cat prototype/dashboard.html
+          } > site/index.html
+          cp prototype/russia-regions.json prototype/synthetic-profile.json site/
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
