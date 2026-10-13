@@ -1,4 +1,4 @@
-# AGENTS.md — apisdkopti24-examples
+# AGENTS.md — apisdkopti24-dashboard
 
 Правила для ИИ-агентов, работающих в этом репозитории. Основа — набор FAB's
 AGENT.MD (правила чистого кода для ИИ-агентов), адаптированный под Python и под

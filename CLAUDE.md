@@ -1,10 +1,10 @@
 <!-- Instructions in English for optimal AI performance. User communicates in their preferred language. -->
 
-# apisdkopti24-examples
+# apisdkopti24-dashboard
 
 ## Project Overview
 
-- **Name:** apisdkopti24-examples
+- **Name:** apisdkopti24-dashboard
 - **Stack:** Python 3.11-3.14, uv, hatchling, pytest, ruff, mypy (strict)
 - **Description:** Examples using the apisdkopti24 SDK for the OPTI 24 fuel card API: dashboard with metrics and analytics, alerts, exports.
 

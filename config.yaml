@@ -3,7 +3,7 @@
 
 project:
   id: "apisdkopti24-examples"
-  name: "apisdkopti24-examples"
+  name: "apisdkopti24-dashboard"
   stack: "Python 3.11-3.14, uv, hatchling, pytest, ruff, mypy (strict)"
   description: "Examples using the apisdkopti24 SDK for the OPTI 24 fuel card API: dashboard with metrics and analytics, alerts, exports."
 
