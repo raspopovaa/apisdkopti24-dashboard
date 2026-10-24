@@ -112,7 +112,10 @@ def generate(
 
     anomalies = _inject(rng, cards, stations, transactions)
     transactions.sort(key=lambda item: (item.timestamp, item.id))
-    limits = tuple(Limit(card.id, _fuel(card), _LIMIT_LITERS) for card in cards)
+    limits = tuple(
+        Limit(f"syn-l-{card.id}", _fuel(card), card_id=card.id, liters=_LIMIT_LITERS, unit="LIT")
+        for card in cards
+    )
     return SyntheticDataset(cards, stations, tuple(transactions), limits, anomalies)
 
 

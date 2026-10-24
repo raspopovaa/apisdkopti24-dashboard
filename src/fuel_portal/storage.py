@@ -11,11 +11,11 @@ SQLite — для пилота, PostgreSQL — для сервера; код о�
 """
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from alembic import command
 from alembic.config import Config
@@ -23,6 +23,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     Connection,
+    Date,
     DateTime,
     Engine,
     Index,
@@ -32,23 +33,45 @@ from sqlalchemy import (
     Table,
     Text,
     create_engine,
+    func,
     select,
 )
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.engine import Dialect
 from sqlalchemy.types import TypeDecorator
 
-from .domain import Card, Limit, Station, Transaction
+from .domain import (
+    Card,
+    CardGroup,
+    ContractSnapshot,
+    Document,
+    Limit,
+    Payment,
+    Station,
+    StatusChange,
+    Transaction,
+)
 
 __all__ = [
     "connect",
+    "count_cards",
+    "load_card_groups",
     "load_cards",
+    "load_contract_snapshot",
+    "load_documents",
+    "load_limits",
+    "load_payments",
+    "load_status_history",
     "load_sync_state",
     "load_transactions",
     "metadata",
     "migrate",
+    "save_card_groups",
     "save_cards",
+    "save_contract_snapshot",
+    "save_documents",
     "save_limits",
+    "save_payments",
     "save_stations",
     "save_sync_state",
     "save_transactions",
@@ -144,26 +167,101 @@ _transactions = Table(
 )
 
 # Снимок лимита на момент синхронизации: история остатка, а не только текущее значение.
+# Цель — карта или группа; коды периода — как в API.
 _limit_snapshots = Table(
     "limit_snapshots",
     metadata,
     Column("contract_key", String(_KEY), primary_key=True),
-    Column("card_id", String(_KEY), primary_key=True),
-    Column("product", String(_NAME), primary_key=True),
+    Column("limit_id", String(_KEY), primary_key=True),
     Column("taken_at", DateTime(), primary_key=True),
-    Column("liters_per_month", _DecimalText(), nullable=False),
+    Column("card_id", String(_KEY), nullable=True),
+    Column("group_id", String(_KEY), nullable=True),
+    Column("product", String(_NAME), nullable=False),
+    Column("liters", _DecimalText(), nullable=True),
     Column("liters_used", _DecimalText(), nullable=True),
+    Column("unit", String(16), nullable=True),
+    Column("amount", _DecimalText(), nullable=True),
+    Column("amount_used", _DecimalText(), nullable=True),
+    Column("period_type", Integer(), nullable=True),
+    Column("period_number", Integer(), nullable=True),
 )
 
-# Снимок денег договора (get_contract_data — тарифицируемый, 1–2 раза в сутки).
-_balance_snapshots = Table(
-    "balance_snapshots",
+# Группы карт: число карт в группе — для сверки со списком карт.
+_card_groups = Table(
+    "card_groups",
+    metadata,
+    Column("contract_key", String(_KEY), primary_key=True),
+    Column("id", String(_KEY), primary_key=True),
+    Column("name", String(_NAME), nullable=False),
+    Column("cards_count", Integer(), nullable=False),
+    Column("updated_at", DateTime(), nullable=False),
+)
+
+# История статусов карт: строка на каждую замеченную смену статуса.
+# Объясняет отказы и операции по заблокированной карте задним числом.
+_card_status_history = Table(
+    "card_status_history",
+    metadata,
+    Column("contract_key", String(_KEY), primary_key=True),
+    Column("card_id", String(_KEY), primary_key=True),
+    Column("seen_at", DateTime(), primary_key=True),
+    Column("status", String(32), nullable=False),
+    Column("previous_status", String(32), nullable=True),
+)
+
+# Снимок денег и условий договора (get_contract_data — тарифицируемый, 1 запрос).
+_contract_snapshots = Table(
+    "contract_snapshots",
     metadata,
     Column("contract_key", String(_KEY), primary_key=True),
     Column("taken_at", DateTime(), primary_key=True),
     Column("available", _DecimalText(), nullable=False),
-    Column("own_funds", _DecimalText(), nullable=True),
-    Column("month_spent", _DecimalText(), nullable=True),
+    Column("own_funds", _DecimalText(), nullable=False),
+    Column("balance", _DecimalText(), nullable=False),
+    Column("month_spent", _DecimalText(), nullable=False),
+    Column("month_liters", _DecimalText(), nullable=False),
+    Column("prev_month_liters", _DecimalText(), nullable=False),
+    Column("status", String(32), nullable=False),
+    Column("pay_scheme", String(32), nullable=False),
+    Column("cards_total", Integer(), nullable=False),
+    Column("cards_active", Integer(), nullable=False),
+    Column("credit_limit", _DecimalText(), nullable=True),
+    Column("amount_limiter_used", _DecimalText(), nullable=True),
+    Column("amount_limiter_left", _DecimalText(), nullable=True),
+    Column("last_payment_amount", _DecimalText(), nullable=True),
+    Column("last_payment_date", Date(), nullable=True),
+)
+
+# Поступления на договор (get_payments — тарифицируемый, 1 запрос).
+_payments = Table(
+    "payments",
+    metadata,
+    Column("contract_key", String(_KEY), primary_key=True),
+    Column("id", String(_KEY), primary_key=True),
+    Column("paid_at", DateTime(), nullable=False),
+    Column("amount", _DecimalText(), nullable=False),
+    Column("amount_client", _DecimalText(), nullable=False),
+    Column("payment_type", String(_NAME), nullable=False),
+    Column("payment_name", String(_NAME), nullable=False),
+    Column("number", String(_KEY), nullable=True),
+    Column("description", Text(), nullable=True),
+    Column("loaded_at", DateTime(), nullable=False),
+    Index("ix_payments_period", "contract_key", "paid_at"),
+)
+
+# Закрывающие документы (get_documents — бесплатный): итог месяца от оператора.
+_documents = Table(
+    "documents",
+    metadata,
+    Column("contract_key", String(_KEY), primary_key=True),
+    Column("id", String(_KEY), primary_key=True),
+    Column("name", String(_NAME), nullable=False),
+    Column("number", String(_KEY), nullable=False),
+    Column("issued_at", DateTime(), nullable=False),
+    Column("total", _DecimalText(), nullable=False),
+    Column("vat", _DecimalText(), nullable=False),
+    Column("amount", _DecimalText(), nullable=False),
+    Column("loaded_at", DateTime(), nullable=False),
 )
 
 # Что и до какого момента загружено; сколько запросов пакета ушло.
@@ -207,6 +305,21 @@ def save_stations(conn: Connection, contract_key: str, stations: Iterable[Statio
 
 
 def save_cards(conn: Connection, contract_key: str, cards: Iterable[Card], now: datetime) -> None:
+    """Обновить карты и записать в историю каждую смену статуса."""
+    cards = list(cards)
+    query = select(_cards.c.id, _cards.c.status).where(_cards.c.contract_key == contract_key)
+    known: dict[str, str] = {row.id: row.status for row in conn.execute(query)}
+    changes = [
+        {
+            "contract_key": contract_key,
+            "card_id": card.id,
+            "seen_at": now,
+            "status": card.status,
+            "previous_status": known.get(card.id),
+        }
+        for card in cards
+        if known.get(card.id) != card.status
+    ]
     rows = [
         {
             "contract_key": contract_key,
@@ -222,6 +335,7 @@ def save_cards(conn: Connection, contract_key: str, cards: Iterable[Card], now: 
         for card in cards
     ]
     _upsert(conn, _cards, rows)
+    _upsert(conn, _card_status_history, changes)
 
 
 def save_transactions(
@@ -259,15 +373,172 @@ def save_limits(
     rows = [
         {
             "contract_key": contract_key,
-            "card_id": limit.card_id,
-            "product": limit.product,
+            "limit_id": limit.id,
             "taken_at": taken_at,
-            "liters_per_month": limit.liters_per_month,
-            "liters_used": None,
+            "card_id": limit.card_id,
+            "group_id": limit.group_id,
+            "product": limit.product,
+            "liters": limit.liters,
+            "liters_used": limit.liters_used,
+            "unit": limit.unit,
+            "amount": limit.amount,
+            "amount_used": limit.amount_used,
+            "period_type": limit.period_type,
+            "period_number": limit.period_number,
         }
         for limit in limits
     ]
     _upsert(conn, _limit_snapshots, rows)
+
+
+def load_limits(conn: Connection, contract_key: str) -> list[Limit]:
+    """Лимиты из последнего снимка договора."""
+    table = _limit_snapshots
+    latest = (
+        select(func.max(table.c.taken_at))
+        .where(table.c.contract_key == contract_key)
+        .scalar_subquery()
+    )
+    query = (
+        select(table)
+        .where(table.c.contract_key == contract_key)
+        .where(table.c.taken_at == latest)
+        .order_by(table.c.limit_id)
+    )
+    return [
+        Limit(
+            id=row.limit_id,
+            product=row.product,
+            card_id=row.card_id,
+            group_id=row.group_id,
+            liters=row.liters,
+            liters_used=row.liters_used,
+            unit=row.unit,
+            amount=row.amount,
+            amount_used=row.amount_used,
+            period_type=row.period_type,
+            period_number=row.period_number,
+        )
+        for row in conn.execute(query)
+    ]
+
+
+def save_card_groups(
+    conn: Connection, contract_key: str, groups: Iterable[CardGroup], now: datetime
+) -> None:
+    rows = [
+        {
+            "contract_key": contract_key,
+            "id": group.id,
+            "name": group.name,
+            "cards_count": group.cards_count,
+            "updated_at": now,
+        }
+        for group in groups
+    ]
+    _upsert(conn, _card_groups, rows)
+
+
+def load_card_groups(conn: Connection, contract_key: str) -> list[CardGroup]:
+    table = _card_groups
+    query = select(table).where(table.c.contract_key == contract_key).order_by(table.c.id)
+    return [CardGroup(row.id, row.name, row.cards_count) for row in conn.execute(query)]
+
+
+def load_status_history(conn: Connection, contract_key: str, card_id: str) -> list[StatusChange]:
+    table = _card_status_history
+    query = (
+        select(table)
+        .where(table.c.contract_key == contract_key)
+        .where(table.c.card_id == card_id)
+        .order_by(table.c.seen_at)
+    )
+    return [
+        StatusChange(row.card_id, row.seen_at, row.status, row.previous_status)
+        for row in conn.execute(query)
+    ]
+
+
+def save_contract_snapshot(
+    conn: Connection, contract_key: str, snapshot: ContractSnapshot, taken_at: datetime
+) -> None:
+    row = {"contract_key": contract_key, "taken_at": taken_at, **_fields(snapshot)}
+    _upsert(conn, _contract_snapshots, [row])
+
+
+def load_contract_snapshot(
+    conn: Connection, contract_key: str
+) -> tuple[datetime, ContractSnapshot] | None:
+    """Последний снимок договора и момент, когда он снят."""
+    table = _contract_snapshots
+    query = (
+        select(table)
+        .where(table.c.contract_key == contract_key)
+        .order_by(table.c.taken_at.desc())
+        .limit(1)
+    )
+    row = conn.execute(query).first()
+    if row is None:
+        return None
+
+    values = row._asdict()
+    del values["contract_key"]
+    taken_at = values.pop("taken_at")
+    return taken_at, ContractSnapshot(**values)
+
+
+def save_payments(
+    conn: Connection, contract_key: str, payments: Iterable[Payment], now: datetime
+) -> None:
+    rows = [
+        {"contract_key": contract_key, **_fields(payment), "loaded_at": now} for payment in payments
+    ]
+    _upsert(conn, _payments, rows)
+
+
+def load_payments(
+    conn: Connection, contract_key: str, date_from: date, date_to: date
+) -> list[Payment]:
+    """Платежи за период, обе даты включительно."""
+    table = _payments
+    query = (
+        select(table)
+        .where(table.c.contract_key == contract_key)
+        .where(table.c.paid_at >= _day_start(date_from))
+        .where(table.c.paid_at < _day_start(date_to + timedelta(days=1)))
+        .order_by(table.c.paid_at, table.c.id)
+    )
+    return [_from_row(Payment, row) for row in conn.execute(query)]
+
+
+def save_documents(
+    conn: Connection, contract_key: str, documents: Iterable[Document], now: datetime
+) -> None:
+    rows = [
+        {"contract_key": contract_key, **_fields(document), "loaded_at": now}
+        for document in documents
+    ]
+    _upsert(conn, _documents, rows)
+
+
+def load_documents(
+    conn: Connection, contract_key: str, date_from: date, date_to: date
+) -> list[Document]:
+    """Документы с датой в периоде, обе даты включительно."""
+    table = _documents
+    query = (
+        select(table)
+        .where(table.c.contract_key == contract_key)
+        .where(table.c.issued_at >= _day_start(date_from))
+        .where(table.c.issued_at < _day_start(date_to + timedelta(days=1)))
+        .order_by(table.c.issued_at, table.c.id)
+    )
+    return [_from_row(Document, row) for row in conn.execute(query)]
+
+
+def count_cards(conn: Connection, contract_key: str) -> int:
+    query = select(func.count()).select_from(_cards).where(_cards.c.contract_key == contract_key)
+    return int(conn.execute(query).scalar_one())
 
 
 def load_cards(conn: Connection, contract_key: str) -> list[Card]:
@@ -344,6 +615,21 @@ def load_sync_state(conn: Connection, contract_key: str, source: str) -> SyncSta
         return None
 
     return SyncState(row.source, row.loaded_until, row.finished_at, row.billable_calls)
+
+
+_Record = TypeVar("_Record")
+
+
+def _fields(record: object) -> dict[str, Any]:
+    return {field.name: getattr(record, field.name) for field in fields(record)}  # type: ignore[arg-type]
+
+
+def _from_row(cls: type[_Record], row: Any) -> _Record:
+    return cls(**{field.name: getattr(row, field.name) for field in fields(cls)})  # type: ignore[arg-type]
+
+
+def _day_start(day: date) -> datetime:
+    return datetime.combine(day, datetime.min.time())
 
 
 def _upsert(conn: Connection, table: Table, rows: list[dict[str, Any]]) -> None:
