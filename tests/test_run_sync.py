@@ -76,3 +76,24 @@ def test_contract_key_hides_contract_id() -> None:
 
     assert key == contract_key_for(CONTRACT_ID)
     assert CONTRACT_ID not in key
+
+
+def test_scan_documents_lists_months_without_billable_calls(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _isolated_environment(monkeypatch)
+    api = _FakeAPI([])
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(api))
+    transport = AsyncTransport(
+        BASE_URL,
+        http_client=cast(AsyncHTTPClient, http_client),
+        rate_limit_policy=RateLimitPolicy(requests_per_second=10_000.0),
+    )
+    args = ["--env-file", str(_env(tmp_path)), "--contract-id", CONTRACT_ID]
+
+    code = main([*args, "--scan-documents", "2025-01-01"], transport=transport)
+
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "09.2026 УПД: 10000.5 ₽ с НДС" in out
+    assert api.paths == ["authUser", "documents"]

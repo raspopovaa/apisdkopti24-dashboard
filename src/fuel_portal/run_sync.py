@@ -20,7 +20,8 @@ from pathlib import Path
 from apisdkopti24 import APIClient, AsyncTransport, ConnectionSettings
 from apisdkopti24.credentials import EnvironmentCredentialsProvider
 
-from . import storage
+from . import opti24, storage
+from .domain import Document
 from .reconcile import Check, check_contract, check_documents
 from .sync import SyncReport, sync_contract
 
@@ -47,6 +48,11 @@ def main(argv: Sequence[str] | None = None, transport: AsyncTransport | None = N
         print("Нужны API_BASE_URL и ID договора (--contract-id).", file=sys.stderr)
         return 2
 
+    if args.scan_documents:
+        return _scan_documents(
+            settings, credentials, transport, contract_id, date.fromisoformat(args.scan_documents)
+        )
+
     db = Path(args.db).expanduser()
     db.parent.mkdir(parents=True, exist_ok=True)
     url = f"sqlite:///{db}"
@@ -59,9 +65,8 @@ def main(argv: Sequence[str] | None = None, transport: AsyncTransport | None = N
         async with APIClient(
             settings=settings, credentials_provider=credentials, transport=transport
         ) as client:
-            await client.auth.auth_user(
-                contract_id=contract_id
-            )  # у учётной записи может быть несколько договоров
+            # У учётной записи может быть несколько договоров: выбираем нужный при входе.
+            await client.auth.auth_user(contract_id=contract_id)
             return await sync_contract(
                 client,
                 engine,
@@ -104,7 +109,35 @@ def _parser() -> argparse.ArgumentParser:
         "--with-money", action="store_true", help="баланс и платежи: +2 тарифицируемых запроса"
     )
     parser.add_argument("--no-documents", action="store_true", help="без УПД (на DEMO их нет)")
+    parser.add_argument(
+        "--scan-documents",
+        metavar="ГГГГ-ММ-ДД",
+        help="только показать УПД с этой даты по сегодня (бесплатно, без записи в базу)",
+    )
     return parser
+
+
+def _scan_documents(
+    settings: ConnectionSettings,
+    credentials: EnvironmentCredentialsProvider,
+    transport: AsyncTransport | None,
+    contract_id: str,
+    first_day: date,
+) -> int:
+    """Месяцы с закрывающими документами: где были покупки. get_documents бесплатный."""
+
+    async def run() -> list[Document]:
+        async with APIClient(
+            settings=settings, credentials_provider=credentials, transport=transport
+        ) as client:
+            await client.auth.auth_user(contract_id=contract_id)
+            return await opti24.fetch_documents(client, contract_id, first_day, date.today())
+
+    documents = asyncio.run(run())
+    print(f"Документы с {first_day:%d.%m.%Y}: {len(documents)}")
+    for document in sorted(documents, key=lambda item: item.issued_at):
+        print(f"- {document.issued_at:%m.%Y} {document.name}: {document.total} ₽ с НДС")
+    return 0
 
 
 def _print_report(report: SyncReport, db: Path) -> None:
