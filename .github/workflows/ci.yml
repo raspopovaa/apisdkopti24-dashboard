@@ -1,0 +1,52 @@
+# Тесты, линтеры и аудит зависимостей. Тесты работают на синтетических данных:
+# ключей, сети и учётных данных ОПТИ 24 не нужно.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Установить зависимости из uv.lock
+        run: |
+          python -m pip install --disable-pip-version-check "uv==0.8.22"
+          uv sync --frozen --all-extras --python "$(command -v python)"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - run: pytest
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Установить зависимости из uv.lock
+        run: |
+          python -m pip install --disable-pip-version-check "uv==0.8.22"
+          uv sync --frozen --all-extras --python "$(command -v python)"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - run: ruff check .
+      - run: mypy
+      - name: Аудит зависимостей
+        run: |
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt > requirements-audit.txt
+          uvx --from "pip-audit==2.9.0" pip-audit -r requirements-audit.txt

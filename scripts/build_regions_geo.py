@@ -87,7 +87,10 @@ class LambertConformalConic:
 
     def __init__(self) -> None:
         phi1, phi2 = (math.radians(p) for p in STANDARD_PARALLELS)
-        t = lambda phi: math.tan(math.pi / 4 + phi / 2)  # noqa: E731
+
+        def t(phi: float) -> float:
+            return math.tan(math.pi / 4 + phi / 2)
+
         self.n = math.log(math.cos(phi1) / math.cos(phi2)) / math.log(t(phi2) / t(phi1))
         self.f = math.cos(phi1) * t(phi1) ** self.n / self.n
         self.rho0 = EARTH_RADIUS_KM * self.f / t(math.radians(ORIGIN_LATITUDE)) ** self.n
@@ -137,10 +140,12 @@ def ring_area(ring: list[tuple[float, float]]) -> float:
 
 
 def polygons_of(geometry: dict[str, Any]) -> list[list[list[list[float]]]]:
+    coordinates: Any = geometry["coordinates"]
     if geometry["type"] == "Polygon":
-        return [geometry["coordinates"]]
+        return [coordinates]
     if geometry["type"] == "MultiPolygon":
-        return geometry["coordinates"]
+        multipolygon: list[list[list[list[float]]]] = coordinates
+        return multipolygon
     return []
 
 
@@ -197,7 +202,7 @@ def build(ne_path: Path, dictionaries_path: Path, out_path: Path) -> None:
         entry = merged.setdefault(api_name, {"polygons": [], "iso": [], "area": 0.0})
         entry["polygons"].extend(polygons)
         entry["iso"].append(props.get("iso_3166_2"))
-        entry["area"] += sum(ring_area([tuple(p) for p in poly[0]]) for poly in polygons)
+        entry["area"] += sum(ring_area([(p[0], p[1]) for p in poly[0]]) for poly in polygons)
 
     # Крупные регионы рисуются первыми, мелкие — поверх (как в статье).
     features = [
