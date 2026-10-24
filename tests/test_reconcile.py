@@ -97,6 +97,22 @@ def test_missing_operations_show_as_difference(engine: Engine) -> None:
     assert cards.difference == Decimal("1")
 
 
+def test_storno_reduces_month_spending(engine: Engine) -> None:
+    storno = replace(
+        _operation("5", datetime(2026, 10, 9, 18, 30), "-500", "-10"),
+        is_storno=True,
+        storno_of="3",
+    )
+    with engine.begin() as conn:
+        storage.save_transactions(conn, CONTRACT, [storno], TAKEN_AT)
+    snapshot = replace(_SNAPSHOT, month_spent=Decimal("1000.50"), month_liters=Decimal("20"))
+
+    with engine.connect() as conn:
+        spent, liters, _, _ = check_contract(conn, CONTRACT, TAKEN_AT, snapshot)
+
+    assert (spent.matches, liters.matches) == (True, True)
+
+
 def test_document_is_compared_with_its_month(engine: Engine) -> None:
     document = Document(
         "syn-doc-1",

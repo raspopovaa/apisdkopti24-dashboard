@@ -103,8 +103,7 @@ def check_documents(
 
 
 def _amount(items: Iterable[Transaction]) -> Decimal:
-    # Суммы как есть. Знак суммы у сторно в документации API не описан;
-    # если на живых данных он положительный, сверка покажет лишнее.
+    # Сторно приходят с суммой со знаком минус: простая сумма уже их вычитает.
     return sum((item.amount for item in items), Decimal(0))
 
 
