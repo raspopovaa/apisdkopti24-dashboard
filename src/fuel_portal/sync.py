@@ -64,6 +64,7 @@ async def sync_contract(
     contract_id: str,
     now: datetime,
     first_day: date | None = None,
+    last_day: date | None = None,
     overlap: timedelta = DEFAULT_OVERLAP,
     max_pages: int = _DEFAULT_MAX_PAGES,
     with_documents: bool = True,
@@ -74,6 +75,8 @@ async def sync_contract(
     first_day — с какого дня грузить, если договор ещё не загружался;
     по умолчанию — первое число текущего месяца. Историю за прошлые месяцы
     дешевле загрузить транзакционным отчётом.
+    last_day — последний день операций; по умолчанию сегодня. Нужен, чтобы
+    загрузить прошлый месяц, не оплачивая все месяцы до сегодня.
     with_documents=False — для DEMO, где get_documents нет.
     with_money=True — баланс и платежи, +2 тарифицируемых запроса за прогон.
     """
@@ -81,7 +84,11 @@ async def sync_contract(
         state = storage.load_sync_state(conn, contract_key, Source.TRANSACTIONS)
 
     date_from = _start(state, now, first_day, overlap)
-    date_to = now.date()
+    date_to = last_day or now.date()
+    if date_to < date_from:
+        raise ValueError(f"Конец периода {date_to} раньше начала {date_from}")
+    # Отметка загрузки — конец загруженного периода, а не момент прогона.
+    loaded_until = now if last_day is None else datetime.combine(date_to, datetime.max.time())
 
     cards = await opti24.fetch_cards(client, contract_id)
     groups = await opti24.fetch_card_groups(client, contract_id)
@@ -114,7 +121,7 @@ async def sync_contract(
         states = [
             storage.SyncState(Source.CARDS, now, now, 0),
             storage.SyncState(Source.LIMITS, now, now, 0),
-            storage.SyncState(Source.TRANSACTIONS, now, now, billable),
+            storage.SyncState(Source.TRANSACTIONS, loaded_until, now, billable),
         ]
         if with_documents:
             states.append(storage.SyncState(Source.DOCUMENTS, now, now, 0))

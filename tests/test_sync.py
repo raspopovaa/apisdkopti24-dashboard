@@ -422,3 +422,18 @@ def test_card_status_changes_are_kept(engine: Engine, tmp_path: Path) -> None:
         ("Active", "Blocked"),
     ]
     assert history[1].seen_at == datetime(2026, 10, 4, 9, 0)
+
+
+def test_past_months_load_only_up_to_last_day(engine: Engine, tmp_path: Path) -> None:
+    api = _FakeAPI([_operation(1, "2025-01-15"), _operation(2, "2025-02-20")])
+
+    report = _run(
+        api, engine, tmp_path, NOW, first_day=date(2025, 1, 1), last_day=date(2025, 2, 28)
+    )
+
+    assert api.periods == [("2025-01-01", "2025-01-31"), ("2025-02-01", "2025-02-28")]
+    assert (report.transactions, report.billable_calls) == (2, 2)
+    with engine.connect() as conn:
+        state = storage.load_sync_state(conn, CONTRACT_KEY, "transactions")
+    assert state is not None and state.loaded_until is not None
+    assert state.loaded_until.date() == date(2025, 2, 28)

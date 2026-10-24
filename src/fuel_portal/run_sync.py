@@ -74,6 +74,7 @@ def main(argv: Sequence[str] | None = None, transport: AsyncTransport | None = N
                 contract_id=contract_id,
                 now=now,
                 first_day=date.fromisoformat(args.first_day) if args.first_day else None,
+                last_day=date.fromisoformat(args.last_day) if args.last_day else None,
                 max_pages=args.max_pages,
                 with_documents=not args.no_documents,
                 with_money=args.with_money,
@@ -101,6 +102,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--first-day", help="первый день загрузки, ГГГГ-ММ-ДД; по умолчанию 1-е число"
+    )
+    parser.add_argument(
+        "--last-day", help="последний день операций, ГГГГ-ММ-ДД; по умолчанию сегодня"
     )
     parser.add_argument(
         "--max-pages", type=int, default=20, help="страниц операций на месяц, предел"
