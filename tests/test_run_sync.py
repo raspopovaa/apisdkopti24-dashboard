@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import httpx
 import pytest
+import test_sync
 from apisdkopti24 import AsyncTransport, RateLimitPolicy
 from apisdkopti24.transport import AsyncHTTPClient
-from test_sync import BASE_URL, CONTRACT_ID, _FakeAPI, _operation
+from test_sync import _AUTH, BASE_URL, CONTRACT_ID, _FakeAPI, _operation
 
 from fuel_portal.run_sync import contract_key_for, main
 
@@ -31,6 +32,10 @@ def test_run_prints_report_without_card_numbers(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _isolated_environment(monkeypatch)
+    # У учётной записи два договора, как у настоящей: договор выбирается по --contract-id.
+    contracts = cast(list[dict[str, Any]], _AUTH["contracts"])
+    other = {**contracts[0], "id": "syn-2-BBBBBBBB", "number": "SYN-2"}
+    monkeypatch.setitem(test_sync._AUTH, "contracts", [*contracts, other])
     api = _FakeAPI([_operation(1, "2026-10-01")])
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(api))
     transport = AsyncTransport(

@@ -59,7 +59,9 @@ def main(argv: Sequence[str] | None = None, transport: AsyncTransport | None = N
         async with APIClient(
             settings=settings, credentials_provider=credentials, transport=transport
         ) as client:
-            await client.auth.auth_user()
+            await client.auth.auth_user(
+                contract_id=contract_id
+            )  # у учётной записи может быть несколько договоров
             return await sync_contract(
                 client,
                 engine,
