@@ -61,10 +61,11 @@ class Station:
 class Card:
     id: str
     number: str
-    group: str
-    status: CardStatus
-    product: Product
-    home_region: str
+    status: str  # как в API; известные значения — CardStatus
+    group: str | None = None
+    comment: str | None = None
+    product: str | None = None  # топливо карты; в API его нет, задаёт синтетика
+    home_region: str | None = None  # в API нет, задаёт синтетика
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,19 +74,23 @@ class Transaction:
     timestamp: datetime  # местное время АЗС, как поле timestamp в API
     card_id: str
     station_id: str
-    product: Product
+    product: str  # название как в API (product_name); у синтетики — значение Product
     qty: Decimal  # литры или штуки; у сторно отрицательные
     price: Decimal
     price_no_discount: Decimal
     amount: Decimal  # сумма со скидкой (поле sum в API)
     discount: Decimal
     is_storno: bool
+    utc_time: datetime | None = None
+    operation_type: str | None = None  # P — покупка, R — возврат
+    amount_no_discount: Decimal | None = None
+    storno_of: str | None = None  # ID отменённой операции
 
 
 @dataclass(frozen=True, slots=True)
 class Limit:
     card_id: str
-    product: Product
+    product: str
     liters_per_month: Decimal
 
 

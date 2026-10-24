@@ -11,6 +11,7 @@ SQLite — для пилота, PostgreSQL — для сервера; код о�
 """
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -37,19 +38,33 @@ from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.engine import Dialect
 from sqlalchemy.types import TypeDecorator
 
-from .domain import Card, CardStatus, Limit, Product, Station, Transaction
+from .domain import Card, Limit, Station, Transaction
 
 __all__ = [
     "connect",
     "load_cards",
+    "load_sync_state",
     "load_transactions",
     "metadata",
     "migrate",
     "save_cards",
     "save_limits",
     "save_stations",
+    "save_sync_state",
     "save_transactions",
+    "SyncState",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class SyncState:
+    """Последний прогон синхронизации одного источника (операции, карты)."""
+
+    source: str
+    loaded_until: datetime | None  # данные загружены до этого момента
+    finished_at: datetime
+    billable_calls: int  # тарифицируемых запросов за прогон
+
 
 _MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 _KEY = 64  # ID и ключи из API короче
@@ -90,10 +105,10 @@ _cards = Table(
     Column("contract_key", String(_KEY), primary_key=True),
     Column("id", String(_KEY), primary_key=True),
     Column("number", String(_KEY), nullable=False),
-    Column("group_name", String(_NAME), nullable=False),
-    Column("status", String(16), nullable=False),
-    Column("product", String(_NAME), nullable=False),
-    Column("home_region", String(_NAME), nullable=False),
+    Column("group_name", String(_NAME), nullable=True),
+    Column("status", String(32), nullable=False),
+    Column("product", String(_NAME), nullable=True),
+    Column("home_region", String(_NAME), nullable=True),
     Column("comment", String(_NAME), nullable=True),
     Column("updated_at", DateTime(), nullable=False),
 )
@@ -198,10 +213,10 @@ def save_cards(conn: Connection, contract_key: str, cards: Iterable[Card], now: 
             "id": card.id,
             "number": card.number,
             "group_name": card.group,
-            "status": card.status.value,
-            "product": card.product.value,
+            "status": card.status,
+            "product": card.product,
             "home_region": card.home_region,
-            "comment": None,
+            "comment": card.comment,
             "updated_at": now,
         }
         for card in cards
@@ -217,19 +232,19 @@ def save_transactions(
             "contract_key": contract_key,
             "id": item.id,
             "local_time": item.timestamp,
-            "utc_time": None,
+            "utc_time": item.utc_time,
             "card_id": item.card_id,
             "station_id": item.station_id,
-            "operation_type": None,
-            "product": item.product.value,
+            "operation_type": item.operation_type,
+            "product": item.product,
             "qty": item.qty,
             "price": item.price,
             "price_no_discount": item.price_no_discount,
             "amount": item.amount,
-            "amount_no_discount": None,
+            "amount_no_discount": item.amount_no_discount,
             "discount": item.discount,
             "is_storno": item.is_storno,
-            "storno_of": None,
+            "storno_of": item.storno_of,
             "raw": None,
             "loaded_at": now,
         }
@@ -245,7 +260,7 @@ def save_limits(
         {
             "contract_key": contract_key,
             "card_id": limit.card_id,
-            "product": limit.product.value,
+            "product": limit.product,
             "taken_at": taken_at,
             "liters_per_month": limit.liters_per_month,
             "liters_used": None,
@@ -261,9 +276,10 @@ def load_cards(conn: Connection, contract_key: str) -> list[Card]:
         Card(
             id=row.id,
             number=row.number,
+            status=row.status,
             group=row.group_name,
-            status=CardStatus(row.status),
-            product=Product(row.product),
+            comment=row.comment,
+            product=row.product,
             home_region=row.home_region,
         )
         for row in conn.execute(query)
@@ -290,16 +306,44 @@ def load_transactions(
             timestamp=row.local_time,
             card_id=row.card_id,
             station_id=row.station_id,
-            product=Product(row.product),
+            product=row.product,
             qty=row.qty,
             price=row.price,
             price_no_discount=row.price_no_discount,
             amount=row.amount,
             discount=row.discount,
             is_storno=row.is_storno,
+            utc_time=row.utc_time,
+            operation_type=row.operation_type,
+            amount_no_discount=row.amount_no_discount,
+            storno_of=row.storno_of,
         )
         for row in conn.execute(query)
     ]
+
+
+def save_sync_state(conn: Connection, contract_key: str, state: SyncState) -> None:
+    row = {
+        "contract_key": contract_key,
+        "source": state.source,
+        "loaded_until": state.loaded_until,
+        "finished_at": state.finished_at,
+        "billable_calls": state.billable_calls,
+    }
+    _upsert(conn, _sync_state, [row])
+
+
+def load_sync_state(conn: Connection, contract_key: str, source: str) -> SyncState | None:
+    query = (
+        select(_sync_state)
+        .where(_sync_state.c.contract_key == contract_key)
+        .where(_sync_state.c.source == source)
+    )
+    row = conn.execute(query).first()
+    if row is None:
+        return None
+
+    return SyncState(row.source, row.loaded_until, row.finished_at, row.billable_calls)
 
 
 def _upsert(conn: Connection, table: Table, rows: list[dict[str, Any]]) -> None:
