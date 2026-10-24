@@ -107,3 +107,8 @@ AGENT.MD (правила чистого кода для ИИ-агентов), а
    контекст и причины.
 
 Коммит и push выполнять только по явной просьбе пользователя.
+
+<!-- antislop:start -->
+## antislop
+For UI, copy, people, mobile layout, or code comments work, apply the antislop rules: https://github.com/miqdadbadjuber/anti-slop (core `antislop.md`; skills `antislop-copywriting`, `antislop-code`, `antislop-human`, `antislop-layoutmobile`, `antislop-ui`). Before editing, follow its "Two Usage Modes" section: an explicit session instruction first, then a saved preference, then ask.
+<!-- antislop:end -->
