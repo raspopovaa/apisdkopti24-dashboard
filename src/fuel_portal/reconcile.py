@@ -8,6 +8,7 @@
     storage ──► reconcile ──► интерфейс, агент
 """
 
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -84,20 +85,26 @@ def check_documents(
 ) -> list[Check]:
     """Сверить закрывающие документы периода с операциями их месяца.
 
-    Документ с суммой с НДС сравнивается с суммой операций месяца даты документа.
-    Сервисный сбор в операциях не выделен, поэтому документ обычно больше.
+    За месяц оператор выставляет несколько УПД (на ОПТИ 24 — на топливо и отдельно
+    на сервисный сбор), поэтому с операциями месяца сравнивается сумма всех УПД
+    месяца с НДС. Сервисный сбор в операциях не выделен: документы обычно больше.
     """
-    checks: list[Check] = []
+    by_month: dict[date, list[Document]] = defaultdict(list)
     for document in storage.load_documents(conn, contract_key, date_from, date_to):
-        first, last = _month(document)
-        month = storage.load_transactions(conn, contract_key, first, last)
+        by_month[_month(document)[0]].append(document)
+
+    checks: list[Check] = []
+    for first, documents in sorted(by_month.items()):
+        _, last = _month(documents[0])
+        operations = _amount(storage.load_transactions(conn, contract_key, first, last))
+        total = sum((item.total for item in documents), Decimal(0))
+        parts = " + ".join(str(item.total) for item in documents)
+        note = f"УПД с НДС ({parts}) против операций {first:%m.%Y}"
+        if operations and total != operations:
+            share = (total - operations) / operations * 100
+            note += f"; разница {share.quantize(Decimal('0.01'))} % от операций"
         checks.append(
-            Check(
-                f"{document.name} {document.number}, ₽",
-                document.total,
-                _amount(month),
-                f"итог документа с НДС против операций {first:%m.%Y}",
-            )
+            Check(f"УПД за {first:%m.%Y} ({len(documents)} шт.), ₽", total, operations, note)
         )
     return checks
 

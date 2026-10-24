@@ -131,3 +131,26 @@ def test_document_is_compared_with_its_month(engine: Engine) -> None:
 
     assert (check.api_value, check.db_value) == (Decimal("1037.49"), Decimal("999.99"))
     assert check.difference == Decimal("37.50")  # например, сервисный сбор
+
+
+def test_documents_of_one_month_are_summed(engine: Engine) -> None:
+    # Как на рабочем договоре: УПД на топливо и отдельный УПД на сервисный сбор 3,75 %.
+    fuel = Document(
+        "syn-doc-2",
+        "УПД",
+        "SYN0000002",
+        datetime(2026, 9, 30, 20, 59, 59),
+        total=Decimal("999.99"),
+        vat=Decimal("166.67"),
+        amount=Decimal("833.32"),
+    )
+    fee = replace(fuel, id="syn-doc-3", number="SYN0000003", total=Decimal("37.50"))
+    with engine.begin() as conn:
+        storage.save_documents(conn, CONTRACT, [fuel, fee], TAKEN_AT)
+
+    with engine.connect() as conn:
+        (check,) = check_documents(conn, CONTRACT, date(2026, 9, 1), date(2026, 9, 30))
+
+    assert check.name == "УПД за 09.2026 (2 шт.), ₽"
+    assert (check.api_value, check.db_value) == (Decimal("1037.49"), Decimal("999.99"))
+    assert "3.75 %" in check.note
