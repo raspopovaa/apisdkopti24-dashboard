@@ -2,7 +2,7 @@ import json
 from collections import Counter
 from decimal import ROUND_HALF_UP, Decimal
 
-from fuel_portal.domain import CardStatus, ProductCategory, mask_card_number
+from fuel_portal.domain import CardStatus, Product, ProductCategory, mask_card_number
 from fuel_portal.synthetic import AnomalyKind, generate, to_json
 
 SYNTHETIC_PREFIX = "9999"
@@ -66,7 +66,7 @@ def test_blocked_card_has_no_transactions() -> None:
 
 
 def test_goods_are_bought_alongside_fuel() -> None:
-    categories = Counter(item.product.category for item in generate().transactions)
+    categories = Counter(Product(item.product).category for item in generate().transactions)
 
     assert categories[ProductCategory.FUEL] > categories[ProductCategory.GOODS] > 0
 

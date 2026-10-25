@@ -112,7 +112,10 @@ def generate(
 
     anomalies = _inject(rng, cards, stations, transactions)
     transactions.sort(key=lambda item: (item.timestamp, item.id))
-    limits = tuple(Limit(card.id, card.product, _LIMIT_LITERS) for card in cards)
+    limits = tuple(
+        Limit(f"syn-l-{card.id}", _fuel(card), card_id=card.id, liters=_LIMIT_LITERS, unit="LIT")
+        for card in cards
+    )
     return SyntheticDataset(cards, stations, tuple(transactions), limits, anomalies)
 
 
@@ -164,7 +167,7 @@ def _card_history(
     while day <= end:
         moment = _daytime(rng, day)
         liters = Decimal(str(rng.uniform(*_REFUEL_LITERS))).quantize(_LITER_STEP)
-        history.append(_purchase(rng, card, rng.choice(home), card.product, liters, moment))
+        history.append(_purchase(rng, card, rng.choice(home), _fuel(card), liters, moment))
 
         if rng.random() < _GOODS_SHARE:
             goods = rng.choice((Product.COFFEE, Product.WASHER))
@@ -173,6 +176,14 @@ def _card_history(
 
         day += timedelta(days=rng.randint(*_REFUEL_EVERY_DAYS))
     return history
+
+
+def _fuel(card: Card) -> Product:
+    # У синтетической карты топливо задано всегда.
+    if card.product is None:
+        raise ValueError(f"У карты {card.id} не задано топливо")
+
+    return Product(card.product)
 
 
 def _daytime(rng: random.Random, day: date) -> datetime:
@@ -216,7 +227,7 @@ def _inject(
     transactions: list[Transaction],
 ) -> dict[str, AnomalyKind]:
     """Заложить по несколько аномалий каждого вида; вернуть ID транзакций и вид."""
-    fuel = [item for item in transactions if item.product.category is ProductCategory.FUEL]
+    fuel = [item for item in transactions if Product(item.product).category is ProductCategory.FUEL]
     by_card = {card.id: card for card in cards}
     anomalies: dict[str, AnomalyKind] = {}
 
@@ -239,20 +250,20 @@ def _anomaly(
     day = base.timestamp.date()
     if kind is AnomalyKind.OVER_TANK:
         later = base.timestamp + timedelta(days=1)
-        return _purchase(rng, card, base.station_id, card.product, _OVER_TANK_LITERS, later)
+        return _purchase(rng, card, base.station_id, _fuel(card), _OVER_TANK_LITERS, later)
 
     if kind is AnomalyKind.RAPID_REFUEL:
         later = base.timestamp + _RAPID_GAP
-        return _purchase(rng, card, base.station_id, card.product, base.qty, later)
+        return _purchase(rng, card, base.station_id, _fuel(card), base.qty, later)
 
     if kind is AnomalyKind.NIGHT_REFUEL:
         night = datetime.combine(day, time(rng.randint(*_NIGHT_HOURS), rng.randint(0, 59)))
-        return _purchase(rng, card, base.station_id, card.product, base.qty, night)
+        return _purchase(rng, card, base.station_id, _fuel(card), base.qty, night)
 
     if kind is AnomalyKind.FAR_REGION:
         far = [station for station in stations if station.region != card.home_region]
         later = base.timestamp + timedelta(hours=3)
-        return _purchase(rng, card, rng.choice(far), card.product, base.qty, later)
+        return _purchase(rng, card, rng.choice(far), _fuel(card), base.qty, later)
 
     # Сторно повторяет исходную операцию с обратным знаком.
     return Transaction(
