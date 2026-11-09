@@ -134,7 +134,7 @@ def test_document_is_compared_with_its_month(engine: Engine) -> None:
 
 
 def test_documents_of_one_month_are_summed(engine: Engine) -> None:
-    # Как на рабочем договоре: УПД на топливо и отдельный УПД на сервисный сбор 3,75 %.
+    # Типовой случай: УПД на топливо и отдельный УПД на сервисный сбор.
     fuel = Document(
         "syn-doc-2",
         "УПД",
