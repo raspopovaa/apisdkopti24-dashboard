@@ -40,15 +40,15 @@ wheels = [
 
 [[package]]
 name = "apisdkopti24"
-version = "0.0.4"
+version = "0.0.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/53/6656fb4412095f7e14141b34e14dab5cbfe7a28b0bcaa7e675fbb0ab648a/apisdkopti24-0.0.4.tar.gz", hash = "sha256:d62429bfbebf2ae08db88764c3503831d58ecc92558e36b81af9445ccf67fb97", size = 216698, upload-time = "2026-10-10T14:23:50.345Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/f3/03f199cec24c91cc5e19d2b2e1c4f24b8bfd879a0727bb5208eacdac1c27/apisdkopti24-0.0.11.tar.gz", hash = "sha256:4c16db243843d5388c08980c1fb6fd0bbcc9572aafefa940a50cebe29e178b7c", size = 268244, upload-time = "2026-11-12T16:54:22.546Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/2a/775130c07d4228f09d7a2477c688eb90b1b0d168a042450320e1d2e95336/apisdkopti24-0.0.4-py3-none-any.whl", hash = "sha256:f9ec1b5101dd1c20c8673d7655e8db058191872c43b1443ce668a7c2d9e2abd6", size = 155388, upload-time = "2026-10-10T14:23:48.426Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/4a/56894fa5eb04146fc4205d6103c21c9de710764810ac34decc3044a76320/apisdkopti24-0.0.11-py3-none-any.whl", hash = "sha256:a7efcd786f2b919402db21dcccc30e16211ac0989448a58be2d0ac4eade9f84b", size = 173320, upload-time = "2026-11-12T16:54:21.082Z" },
 ]
 
 [[package]]
@@ -71,7 +71,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.13" },
-    { name = "apisdkopti24", specifier = ">=0.0.4" },
+    { name = "apisdkopti24", specifier = ">=0.0.11" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
